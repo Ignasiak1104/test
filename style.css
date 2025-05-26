@@ -1,33 +1,51 @@
 /* style.css */
+:root {
+  --primary-color: #007bff;
+  --secondary-color: #6c757d;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --light-bg: #f8f9fa;
+  --dark-bg: #343a40;
+  --text-light: #ffffff;
+  --text-dark: #333333;
+  --border-color: #dee2e6;
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: var(--font-family);
   background-color: #f0f2f5;
   margin: 0;
   padding: 0;
-  color: #333;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  color: var(--text-dark);
+  display: flex; /* Potrzebne dla układu z boczną nawigacją */
+  flex-direction: column; /* H1 nad głównym kontenerem */
   min-height: 100vh;
 }
 
-h1 { /* Główny tytuł CRM App */
-  color: #2c3e50;
-  margin-top: 20px;
-  margin-bottom: 20px;
+h1#main-title { /* Główny tytuł CRM App */
+  color: var(--text-dark);
+  text-align: center;
+  background-color: var(--text-light);
+  padding: 15px 0;
+  margin: 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 1.8em;
+  font-weight: 600;
 }
 
-/* Kontener autoryzacji */
+/* Kontener autoryzacji (bez zmian, ale dla spójności) */
 #auth {
   width: 100%;
   display: flex;
   justify-content: center;
-  align-items: flex-start; /* Zmienione z center na flex-start, aby formularz był wyżej */
-  padding-top: 50px; /* Dodaje trochę przestrzeni od góry */
+  align-items: flex-start;
+  padding-top: 50px;
+  flex-grow: 1; /* Aby zajął dostępną przestrzeń, gdy #app jest ukryty */
 }
 
 .login-container {
-  background-color: #ffffff;
+  background-color: var(--text-light);
   padding: 25px 30px;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -38,7 +56,7 @@ h1 { /* Główny tytuł CRM App */
 
 .login-container h2 {
   margin-bottom: 20px;
-  color: #333;
+  color: var(--text-dark);
   font-weight: 600;
 }
 
@@ -60,10 +78,9 @@ input[type="text"],
 input[type="date"],
 input[type="number"],
 select {
-  width: calc(100% - 20px); /* Uwzględnia padding inputu */
+  width: 100%; /* Pełna szerokość w ramach .form-group */
   padding: 10px;
-  margin-bottom: 5px; /* Zmniejszony margines, bo jest w form-group */
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   box-sizing: border-box;
   font-size: 15px;
@@ -71,14 +88,14 @@ select {
 
 .button-group {
   display: flex;
-  justify-content: space-between; /* Rozmieszcza przyciski */
-  gap: 10px; /* Odstęp między przyciskami */
+  justify-content: space-between;
+  gap: 10px;
   margin-top: 20px;
 }
 
 .auth-button,
 button[type="submit"],
-.nav-button {
+.nav-button { /* Ogólne style dla przycisków */
   padding: 10px 15px;
   border: none;
   border-radius: 4px;
@@ -86,89 +103,88 @@ button[type="submit"],
   font-size: 16px;
   font-weight: 500;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  text-align: center;
 }
 
 .auth-button {
-  background-color: #007bff;
-  color: white;
-  flex-grow: 1; /* Przyciski dzielą się dostępną przestrzenią */
+  background-color: var(--primary-color);
+  color: var(--text-light);
+  flex-grow: 1;
 }
 
 .auth-button.register {
-  background-color: #28a745; /* Inny kolor dla rejestracji */
+  background-color: var(--success-color);
 }
 
 .auth-button:hover {
-  background-color: #0056b3;
+  opacity: 0.9;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-.auth-button.register:hover {
-  background-color: #1e7e34;
 }
 
 .auth-message {
     margin-top: 15px;
     font-size: 0.9em;
-    color: red; /* Domyślnie na błędy, można zmieniać JSem */
+    color: var(--danger-color);
 }
 
-
-/* Główny kontener aplikacji po zalogowaniu */
-#app {
-  display: none; /* Początkowo ukryty */
-  flex-direction: column; /* Zmienione na column, nav na górze, content poniżej */
+/* Główny układ aplikacji po zalogowaniu */
+#app-container { /* Nowy kontener dla nawigacji i treści */
+  display: none; /* Początkowo ukryty, pokazywany przez JS */
+  flex-direction: row; /* Nawigacja po lewej, treść po prawej */
+  flex-grow: 1; /* Aby wypełnić pozostałą wysokość */
   width: 100%;
-  max-width: 1200px; /* Maksymalna szerokość dla dużych ekranów */
-  margin: 0 auto; /* Centrowanie kontenera app */
-  background-color: #fff;
-  /* min-height: calc(100vh - 70px); Dajmy jakąś minimalną wysokość, jeśli h1 jest poza #app */
 }
 
-/* Nawigacja */
-nav {
-  background-color: #343a40;
-  padding: 10px 20px;
-  display: flex; /* Przyciski w jednym rzędzie */
-  justify-content: flex-start; /* Wyrównanie przycisków do lewej */
-  align-items: center;
-  gap: 10px; /* Odstęp między przyciskami */
-  width: 100%; /* Nawigacja na całą szerokość #app */
-  box-sizing: border-box;
+/* Boczna nawigacja */
+nav#side-nav {
+  width: 220px; /* Szerokość bocznej nawigacji */
+  background-color: var(--dark-bg);
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column; /* Przyciski jeden pod drugim */
+  align-items: stretch; /* Przyciski na całą szerokość nawigacji */
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
 }
 
 .nav-button {
-  background-color: #495057;
-  color: white;
-  margin-right: 0; /* Usunięty margines, używamy gap */
+  background-color: transparent;
+  color: var(--text-light);
+  padding: 12px 20px; /* Większy padding dla bocznej nawigacji */
+  margin: 5px 10px; /* Marginesy góra/dół i boki */
+  border-radius: 4px;
+  text-align: left; /* Tekst wyrównany do lewej */
+  font-size: 1em;
+  border: none; /* Usuwamy obramowanie */
 }
 
-.nav-button:hover {
-  background-color: #6c757d;
+.nav-button:hover, .nav-button.active {
+  background-color: var(--primary-color); /* Kolor tła dla aktywnego/hover */
+  color: var(--text-light);
 }
 
 .nav-button.logout {
-  background-color: #dc3545;
-  margin-left: auto; /* Wypycha przycisk wyloguj na prawo */
+  margin-top: auto; /* Wypycha przycisk wyloguj na dół */
+  background-color: var(--danger-color); /* Specjalny kolor dla wylogowania */
 }
 .nav-button.logout:hover {
-  background-color: #c82333;
+  background-color: #c82333; /* Ciemniejszy czerwony przy najechaniu */
 }
 
-/* Kontener na dynamiczną treść */
-#content {
-  padding: 20px;
-  background-color: #ffffff;
-  flex-grow: 1; /* Pozwala #content wypełnić dostępną przestrzeń w #app */
-  width: calc(100% - 40px); /* Uwzględnia padding */
-  box-sizing: border-box;
+/* Główny kontener na treść (obok nawigacji) */
+#content-area {
+  flex-grow: 1; /* Zajmuje pozostałą przestrzeń */
+  padding: 25px;
+  background-color: var(--text-light);
+  overflow-y: auto; /* Scroll, jeśli treść jest za długa */
 }
 
-#content h2 {
+#content-area h2 {
   margin-top: 0;
-  color: #007bff; /* Kolor nagłówków sekcji */
-  border-bottom: 2px solid #eee;
+  color: var(--primary-color);
+  border-bottom: 2px solid var(--border-color);
   padding-bottom: 10px;
   margin-bottom: 20px;
+  font-size: 1.6em;
 }
 
 ul {
@@ -176,42 +192,158 @@ ul {
   padding: 0;
 }
 
-li {
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-  padding: 10px 15px;
-  margin-bottom: 8px;
-  border-radius: 4px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-form {
-  margin-top: 20px;
-  margin-bottom: 20px;
-  padding: 15px;
-  background-color: #fdfdfd;
-  border: 1px solid #eee;
+li.list-item { /* Dodana klasa dla elementów listy */
+  background-color: var(--light-bg);
+  border: 1px solid var(--border-color);
+  padding: 12px 18px;
+  margin-bottom: 10px;
   border-radius: 5px;
+  /* display: flex;  Usunięte, aby zawartość była blokowa wewnątrz li */
+  /* justify-content: space-between; */
+  /* align-items: center; */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.list-item p {
+    margin: 4px 0;
+    font-size: 0.95em;
+}
+.list-item span.label {
+    font-weight: 500;
+    color: #555;
 }
 
-form input, form select, form button {
-  margin-bottom: 10px; /* Dodaje odstęp pod elementami formularza */
+
+form.data-form { /* Klasa dla formularzy dodawania danych */
+  margin-top: 25px;
+  margin-bottom: 25px;
+  padding: 20px;
+  background-color: #fdfdfd;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
-form button[type="submit"] {
-    background-color: #28a745;
-    color: white;
-    display: block; /* Aby przycisk był na całą szerokość formularza (opcjonalne) */
-    width: auto; /* Lub auto, jeśli nie chcesz na całą szerokość */
+form.data-form h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+form.data-form button[type="submit"] {
+    background-color: var(--success-color);
+    color: var(--text-light);
+    display: inline-block; /* Aby przycisk nie był na całą szerokość */
+    width: auto;
     margin-top: 10px;
 }
-form button[type="submit"]:hover {
+form.data-form button[type="submit"]:hover {
     background-color: #218838;
 }
 
-/* Styl dla wiadomości w formularzach dodawania (opcjonalne) */
-.form-message {
-    margin-top: 10px;
-    font-size: 0.9em;
+/* Style dla widoku Kanban (Deals) */
+#kanban-board {
+  display: flex;
+  gap: 20px; /* Odstęp między kolumnami */
+  width: 100%;
+  overflow-x: auto; /* Scroll poziomy dla kolumn */
+  padding-bottom: 15px; /* Aby scrollbar nie nachodził na karty */
+}
+
+.kanban-column {
+  flex: 1; /* Kolumny dzielą się dostępną przestrzenią */
+  min-width: 280px; /* Minimalna szerokość kolumny */
+  max-width: 320px; /* Maksymalna szerokość kolumny */
+  background-color: var(--light-bg);
+  border-radius: 6px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+}
+
+.kanban-column h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 1.2em;
+  text-align: center;
+  color: var(--secondary-color);
+}
+
+.kanban-card {
+  background-color: var(--text-light);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--primary-color); /* Akcent kolorystyczny */
+  padding: 10px 15px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  cursor: grab; /* Sugestia możliwości przeciągania (niezaimplementowane) */
+}
+.kanban-card:last-child {
+  margin-bottom: 0;
+}
+
+.kanban-card h4 {
+  margin-top: 0;
+  margin-bottom: 5px;
+  font-size: 1.05em;
+  color: var(--text-dark);
+}
+
+.kanban-card p {
+  margin: 3px 0;
+  font-size: 0.9em;
+  color: #555;
+}
+.kanban-card p.value {
+    font-weight: bold;
+}
+
+/* Style dla selectów w formularzach powiązań */
+.form-group select {
+    cursor: pointer;
+}
+.form-group select option[value=""] { /* Dla opcji "Wybierz..." */
+    color: #999;
+}
+
+/* Loading/Error states */
+.loading-message, .error-message {
+    text-align: center;
+    padding: 20px;
+    font-size: 1.1em;
+    color: var(--secondary-color);
+}
+.error-message {
+    color: var(--danger-color);
+}
+
+/* Responsywność (bardzo podstawowa) */
+@media (max-width: 768px) {
+  #app-container {
+    flex-direction: column; /* Nawigacja na górze, treść poniżej */
+  }
+  nav#side-nav {
+    width: 100%;
+    height: auto;
+    flex-direction: row; /* Przyciski w rzędzie */
+    overflow-x: auto; /* Scroll dla przycisków, jeśli się nie mieszczą */
+    padding: 5px 0;
+    justify-content: center;
+  }
+  .nav-button {
+    margin: 5px;
+    text-align: center;
+  }
+  .nav-button.logout {
+    margin-left: 5px; /* Usunięcie auto, aby był w przepływie */
+  }
+  #kanban-board {
+    flex-direction: column; /* Kolumny jedna pod drugą na małych ekranach */
+    gap: 15px;
+    align-items: stretch; /* Kolumny na pełną szerokość */
+  }
+  .kanban-column {
+    min-width: unset;
+    max-width: 100%; /* Kolumny na pełną szerokość kontenera */
+  }
 }
