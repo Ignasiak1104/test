@@ -1,12 +1,24 @@
 // auth/login.js
-import { supabaseClient as supabase } from './init.js'; // ZMIANA TUTAJ
-import { showAppUI } from '../app.js';
+import { supabaseClient as supabase } from './init.js';
+import { showAppUI } from '../app.js'; // showAppUI jest eksportowane z app.js
 
 export function handleAuthState(session) {
   console.log("login.js: handleAuthState called with session:", session);
+  const appContainer = document.getElementById('app-container'); // Celujemy w nowy kontener
+  const authDiv = document.getElementById('auth');
+
+  if (!authDiv || !appContainer) {
+      console.error("login.js: Critical error - authDiv or appContainer not found.");
+      return;
+  }
+
   if (session) {
-    showAppUI();
+    authDiv.style.display = 'none';
+    appContainer.style.display = 'flex'; // Pokaż główny kontener aplikacji
+    showAppUI(); // showAppUI zbuduje wewnętrzną strukturę appContainer
   } else {
+    authDiv.style.display = 'flex'; // Pokaż kontener logowania
+    appContainer.style.display = 'none'; // Ukryj główny kontener aplikacji
     showLogin();
   }
 }
@@ -25,11 +37,12 @@ export function showLogin() {
     return;
   }
 
-  const appDiv = document.getElementById('app');
-  if (appDiv) {
-    appDiv.style.display = 'none';
+  // Upewnij się, że appContainer jest ukryty, gdy pokazujemy logowanie
+  const appContainer = document.getElementById('app-container');
+  if (appContainer) {
+    appContainer.style.display = 'none';
   }
-  authDiv.style.display = 'block';
+  authDiv.style.display = 'flex'; // Używamy flex dla authDiv, aby login-container był wycentrowany
 
   authDiv.innerHTML = `
     <div class="login-container">
