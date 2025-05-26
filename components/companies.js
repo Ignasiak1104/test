@@ -1,33 +1,46 @@
 // components/companies.js
-import { supabaseClient as supabase } from '../auth/init.js'; // ZMIANA TUTAJ
+import { supabaseClient as supabase } from '../auth/init.js';
 
 export async function renderCompanies(container) {
+  container.innerHTML = `<p class="loading-message">Ładowanie firm...</p>`;
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
+    if (userError) {
+        console.error("Error fetching user:", userError.message);
+        container.innerHTML = "<p class='error-message'>Błąd podczas pobierania danych użytkownika. Spróbuj ponownie później.</p>";
+        return;
+    }
     if (!user) {
         console.log("renderCompanies: User not logged in.");
-        container.innerHTML = "<p>Proszę się zalogować, aby zobaczyć firmy.</p>";
+        container.innerHTML = "<p class='error-message'>Proszę się zalogować, aby zobaczyć firmy.</p>";
         return;
     }
 
     const { data: companies, error } = await supabase
       .from('companies')
       .select('*')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+        console.error("Error fetching companies:", error.message);
+        container.innerHTML = `<p class="error-message">Wystąpił błąd podczas ładowania firm: ${error.message}</p>`;
+        return;
+    }
 
     let html = '<h2>Firmy</h2>';
     if (companies && companies.length > 0) {
         html += '<ul>' + companies.map(c => 
-        `<li>${c.name} - ${c.industry || 'Brak branży'}</li>`).join('') + '</ul>';
+        `<li class="list-item">
+            <p><span class="label">Nazwa:</span> ${c.name}</p>
+            <p><span class="label">Branża:</span> ${c.industry || 'Brak informacji'}</p>
+        </li>`).join('') + '</ul>';
     } else {
         html += '<p>Nie masz jeszcze żadnych firm.</p>';
     }
 
     html += `
-      <form id="addCompanyForm">
+      <form id="addCompanyForm" class="data-form">
         <h3>Dodaj nową firmę</h3>
         <div class="form-group">
             <label for="companyName">Nazwa firmy:</label>
@@ -40,24 +53,37 @@ export async function renderCompanies(container) {
         <button type="submit">Dodaj Firmę</button>
       </form>
     `;
-
+    
     container.innerHTML = html;
 
-    document.getElementById('addCompanyForm').onsubmit = async (e) => {
-      e.preventDefault();
-      const name = document.getElementById('companyName').value;
-      const industry = document.getElementById('companyIndustry').value;
-      
-      const { error: insertError } = await supabase.from('companies').insert([{ name, industry, user_id: user.id }]);
-      if (insertError) {
-        console.error("Error adding company:", insertError.message);
-        alert("Błąd podczas dodawania firmy: " + insertError.message);
-      } else {
-        renderCompanies(container);
-      }
-    };
-  } catch (error) {
-    console.error("Error rendering companies:", error.message);
-    container.innerHTML = `<p>Wystąpił błąd podczas ładowania firm: ${error.message}. Spróbuj ponownie później.</p>`;
+    const addCompanyForm = document.getElementById('addCompanyForm');
+    if (addCompanyForm) {
+        addCompanyForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const name = document.getElementById('companyName').value;
+          const industry = document.getElementById('companyIndustry').value;
+          
+          const { data: { user: currentUser } } = await supabase.auth.getUser();
+           if (!currentUser) {
+              alert("Sesja wygasła, zaloguj się ponownie.");
+              return;
+          }
+
+          const { error: insertError } = await supabase.from('companies').insert([
+              { name, industry, user_id: currentUser.id }
+          ]);
+
+          if (insertError) {
+            console.error("Error adding company:", insertError.message);
+            alert("Błąd podczas dodawania firmy: " + insertError.message);
+          } else {
+            renderCompanies(container); // Odśwież listę
+          }
+        };
+    }
+
+  } catch (error) { // Ogólny catch dla błędów w funkcji renderCompanies
+    console.error("General error in renderCompanies:", error.message);
+    container.innerHTML = `<p class="error-message">Wystąpił nieoczekiwany błąd: ${error.message}. Spróbuj odświeżyć stronę.</p>`;
   }
 }
