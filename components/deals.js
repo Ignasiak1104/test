@@ -66,8 +66,8 @@ async function displayEditDealForm(dealId, container, currentUser) {
             </select>
           </div>
           <div class="edit-form-buttons">
-            <button type="submit">Zapisz Zmiany</button>
-            <button type="button" class="cancel-btn" id="cancelEditDealBtnAction">Anuluj</button>
+            <button type="submit" class="btn btn-primary">Zapisz Zmiany</button>
+            <button type="button" class="btn btn-secondary cancel-btn" id="cancelEditDealBtnAction">Anuluj</button>
           </div>
         </form>
       </div>
@@ -238,7 +238,7 @@ export async function renderDeals(container) {
                 ${companiesForSelect.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
             </select>
         </div>
-        <button type="submit">Dodaj Szansę</button>
+        <button type="submit" class="btn btn-success">Dodaj Szansę</button>
       </form>
     `;
     container.innerHTML = html;
@@ -304,7 +304,6 @@ export async function renderDeals(container) {
 
     container.querySelectorAll('.kanban-card .edit-btn').forEach(button => {
         button.onclick = (e) => {
-            // Zapobiegaj uruchomieniu drag & drop, jeśli kliknięto przycisk edycji
             e.stopPropagation(); 
             const dealId = e.target.dataset.id;
             displayEditDealForm(dealId, container, currentUser);
