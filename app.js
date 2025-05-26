@@ -25,6 +25,7 @@ function setActiveButton(buttonToActivate) {
 export function showAppUI() {
   if (!authDivElement) authDivElement = document.getElementById('auth');
   if (!appContainerElement) appContainerElement = document.getElementById('app-container');
+  const mainTitle = document.getElementById('main-title');
 
   if (!authDivElement || !appContainerElement) {
     console.error('app.js (showAppUI): Kluczowe kontenery (authDivElement lub appContainerElement) nie są dostępne!');
@@ -33,7 +34,13 @@ export function showAppUI() {
   }
 
   console.log("app.js: showAppUI called");
+  
+  document.body.classList.remove('auth-active');
+  authDivElement.classList.remove('fullscreen-auth');
   authDivElement.style.display = 'none';
+  
+  if(mainTitle) mainTitle.classList.remove('hidden');
+
   appContainerElement.style.display = 'flex';
   appContainerElement.innerHTML = '';
 
@@ -72,7 +79,6 @@ export function showAppUI() {
             console.error('app.js: Error logging out:', error);
             alert('Wystąpił błąd podczas wylogowywania: ' + error.message);
         }
-        // Stan zostanie obsłużony przez onAuthStateChange
     };
   }
 
@@ -126,10 +132,10 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (error) {
         console.error('app.js (DOMContentLoaded async): Krytyczny błąd podczas pobierania sesji początkowej:', error);
         if (authDivElement) {
-            console.log("app.js (DOMContentLoaded async): Awaryjne wywołanie showLogin().");
-            showLogin(authDivElement);
+            console.log("app.js (DOMContentLoaded async): Awaryjne wywołanie handleAuthState(null).");
+            handleAuthState(null, authDivElement, appContainerElement);
         } else if (document.body) {
-            document.body.innerHTML = "<h1>Krytyczny błąd inicjalizacji sesji.</h1>";
+            document.body.innerHTML = "<h1>Krytyczny błąd inicjalizacji sesji. Element #auth nie istnieje.</h1>";
         }
       }
     })();
