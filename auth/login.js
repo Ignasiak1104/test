@@ -1,33 +1,40 @@
 // auth/login.js
 import { supabaseClient as supabase } from './init.js';
-import { showAppUI } from '../app.js'; // showAppUI jest eksportowane z app.js
+import { showAppUI } from '../app.js';
 
-export function handleAuthState(session) {
+// ZMODYFIKOWANA FUNKCJA: przyjmuje authDiv i appContainer jako argumenty
+export function handleAuthState(session, authDivElement, appContainerElement) {
   console.log("login.js: handleAuthState called with session:", session);
-  const appContainer = document.getElementById('app-container'); // Celujemy w nowy kontener
-  const authDiv = document.getElementById('auth');
+
+  // Użyj przekazanych elementów zamiast pobierać je ponownie
+  const authDiv = authDivElement;
+  const appContainer = appContainerElement;
 
   if (!authDiv || !appContainer) {
-      console.error("login.js: Critical error - authDiv or appContainer not found.");
+      console.error("login.js (handleAuthState): Critical error - authDiv or appContainer not provided or null.");
       return;
   }
 
   if (session) {
     authDiv.style.display = 'none';
-    appContainer.style.display = 'flex'; // Pokaż główny kontener aplikacji
-    showAppUI(); // showAppUI zbuduje wewnętrzną strukturę appContainer
+    appContainer.style.display = 'flex';
+    showAppUI(); // showAppUI nadal może używać globalnych referencji lub pobierać je sama,
+                 // ale na tym etapie powinny już być dostępne
   } else {
-    authDiv.style.display = 'flex'; // Pokaż kontener logowania
-    appContainer.style.display = 'none'; // Ukryj główny kontener aplikacji
-    showLogin();
+    authDiv.style.display = 'flex';
+    appContainer.style.display = 'none';
+    showLogin(authDiv); // Przekaż authDiv do showLogin
   }
 }
 
-export function showLogin() {
+// ZMODYFIKOWANA FUNKCJA: przyjmuje authDiv jako argument
+export function showLogin(authDivElement) {
   console.log("login.js: showLogin called");
-  const authDiv = document.getElementById('auth');
+  const authDiv = authDivElement; // Użyj przekazanego elementu
+
   if (!authDiv) {
-    console.error("login.js: Auth div not found for login form!");
+    console.error("login.js (showLogin): Auth div not provided or null!");
+    // Awaryjny fallback, jeśli jakimś cudem authDivElement jest null, a body istnieje
     if (document.body) {
         const errorMsg = document.createElement('p');
         errorMsg.textContent = "Krytyczny błąd: Brak kontenera UI (#auth) dla formularza logowania. Sprawdź konsolę.";
@@ -38,11 +45,12 @@ export function showLogin() {
   }
 
   // Upewnij się, że appContainer jest ukryty, gdy pokazujemy logowanie
+  // Możemy go pobrać tutaj, jeśli nie jest przekazywany, ale lepiej być konsekwentnym
   const appContainer = document.getElementById('app-container');
   if (appContainer) {
     appContainer.style.display = 'none';
   }
-  authDiv.style.display = 'flex'; // Używamy flex dla authDiv, aby login-container był wycentrowany
+  authDiv.style.display = 'flex';
 
   authDiv.innerHTML = `
     <div class="login-container">
@@ -65,34 +73,40 @@ export function showLogin() {
 
   const messageEl = document.getElementById('auth-message');
 
-  document.getElementById('loginBtn').onclick = async () => {
-    messageEl.textContent = '';
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    console.log("login.js: Login attempt for:", email);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      console.log("login.js: Login successful (onAuthStateChange will handle UI)");
-    } catch (error) {
-      console.error("login.js: Login error:", error.message);
-      messageEl.textContent = "Logowanie nie powiodło się: " + error.message;
-    }
-  };
+  const loginBtn = document.getElementById('loginBtn');
+  if (loginBtn) {
+    loginBtn.onclick = async () => {
+        if(messageEl) messageEl.textContent = '';
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        console.log("login.js: Login attempt for:", email);
+        try {
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          console.log("login.js: Login successful (onAuthStateChange will handle UI)");
+        } catch (error) {
+          console.error("login.js: Login error:", error.message);
+          if(messageEl) messageEl.textContent = "Logowanie nie powiodło się: " + error.message;
+        }
+    };
+  }
 
-  document.getElementById('registerBtn').onclick = async () => {
-    messageEl.textContent = '';
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    console.log("login.js: Register attempt for:", email);
-    try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      console.log("login.js: Registration successful, pending confirmation:", data);
-      messageEl.textContent = "Sprawdź email, aby potwierdzić rejestrację.";
-    } catch (error) {
-      console.error("login.js: Registration error:", error.message);
-      messageEl.textContent = "Rejestracja nie powiodła się: " + error.message;
-    }
-  };
+  const registerBtn = document.getElementById('registerBtn');
+  if (registerBtn) {
+    registerBtn.onclick = async () => {
+        if(messageEl) messageEl.textContent = '';
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        console.log("login.js: Register attempt for:", email);
+        try {
+          const { data, error } = await supabase.auth.signUp({ email, password });
+          if (error) throw error;
+          console.log("login.js: Registration successful, pending confirmation:", data);
+          if(messageEl) messageEl.textContent = "Sprawdź email, aby potwierdzić rejestrację.";
+        } catch (error) {
+          console.error("login.js: Registration error:", error.message);
+          if(messageEl) messageEl.textContent = "Rejestracja nie powiodła się: " + error.message;
+        }
+    };
+  }
 }
