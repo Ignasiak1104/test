@@ -18,15 +18,20 @@ async function displayEditCompanyForm(companyId, container, currentUser) {
     let html = `
       <div class="edit-form-container">
         <h3>Edytuj Firmę</h3>
-        <form id="specificEditCompanyForm" class="data-form"> <input type="hidden" id="editCompanyFormIdField" value="${company.id}"> <div class="form-group">
-            <label for="editCompanyFormNameField">Nazwa firmy:</label> <input type="text" id="editCompanyFormNameField" value="${company.name}" required />
+        <form id="specificEditCompanyForm" class="data-form">
+          <input type="hidden" id="editCompanyFormIdField" value="${company.id}">
+          <div class="form-group">
+            <label for="editCompanyFormNameField">Nazwa firmy:</label>
+            <input type="text" id="editCompanyFormNameField" value="${company.name}" required />
           </div>
           <div class="form-group">
-            <label for="editCompanyFormIndustryField">Branża:</label> <input type="text" id="editCompanyFormIndustryField" value="${company.industry || ''}" />
+            <label for="editCompanyFormIndustryField">Branża:</label>
+            <input type="text" id="editCompanyFormIndustryField" value="${company.industry || ''}" />
           </div>
           <div class="edit-form-buttons">
             <button type="submit">Zapisz Zmiany</button>
-            <button type="button" class="cancel-btn" id="cancelEditCompanyBtnAction">Anuluj</button> </div>
+            <button type="button" class="cancel-btn" id="cancelEditCompanyBtnAction">Anuluj</button>
+          </div>
         </form>
       </div>
     `;
@@ -112,12 +117,15 @@ export async function renderCompanies(container) {
     }
 
     html += `
-      <form id="mainAddCompanyForm" class="data-form"> <h3>Dodaj nową firmę</h3>
+      <form id="mainAddCompanyForm" class="data-form">
+        <h3>Dodaj nową firmę</h3>
         <div class="form-group">
-            <label for="addCompanyFormNameField">Nazwa firmy:</label> <input type="text" id="addCompanyFormNameField" placeholder="Nazwa firmy" required />
+            <label for="addCompanyFormNameField">Nazwa firmy:</label>
+            <input type="text" id="addCompanyFormNameField" placeholder="Nazwa firmy" required />
         </div>
         <div class="form-group">
-            <label for="addCompanyFormIndustryField">Branża:</label> <input type="text" id="addCompanyFormIndustryField" placeholder="Branża" />
+            <label for="addCompanyFormIndustryField">Branża:</label>
+            <input type="text" id="addCompanyFormIndustryField" placeholder="Branża" />
         </div>
         <button type="submit">Dodaj Firmę</button>
       </form>
