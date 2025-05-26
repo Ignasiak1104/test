@@ -1,7 +1,6 @@
 // components/companies.js
 import { supabaseClient as supabase } from '../auth/init.js';
 
-// --- Funkcja do wyświetlania formularza edycji firmy ---
 async function displayEditCompanyForm(companyId, container, currentUser) {
   container.innerHTML = `<p class="loading-message">Ładowanie danych firmy...</p>`;
   try {
@@ -19,66 +18,68 @@ async function displayEditCompanyForm(companyId, container, currentUser) {
     let html = `
       <div class="edit-form-container">
         <h3>Edytuj Firmę</h3>
-        <form id="editCompanyFormInstance" class="data-form">
-          <input type="hidden" id="editCompanyId" value="${company.id}">
-          <div class="form-group">
-            <label for="editCompanyName">Nazwa firmy:</label>
-            <input type="text" id="editCompanyName" value="${company.name}" required />
+        <form id="specificEditCompanyForm" class="data-form"> <input type="hidden" id="editCompanyFormIdField" value="${company.id}"> <div class="form-group">
+            <label for="editCompanyFormNameField">Nazwa firmy:</label> <input type="text" id="editCompanyFormNameField" value="${company.name}" required />
           </div>
           <div class="form-group">
-            <label for="editCompanyIndustry">Branża:</label>
-            <input type="text" id="editCompanyIndustry" value="${company.industry || ''}" />
+            <label for="editCompanyFormIndustryField">Branża:</label> <input type="text" id="editCompanyFormIndustryField" value="${company.industry || ''}" />
           </div>
           <div class="edit-form-buttons">
             <button type="submit">Zapisz Zmiany</button>
-            <button type="button" class="cancel-btn" id="cancelEditCompanyBtn">Anuluj</button>
-          </div>
+            <button type="button" class="cancel-btn" id="cancelEditCompanyBtnAction">Anuluj</button> </div>
         </form>
       </div>
     `;
     container.innerHTML = html;
 
-    document.getElementById('editCompanyFormInstance').onsubmit = async (e) => {
-      e.preventDefault();
-      const updatedName = document.getElementById('editCompanyName').value;
-      const updatedIndustry = document.getElementById('editCompanyIndustry').value;
+    const editForm = document.getElementById('specificEditCompanyForm');
+    if (editForm) {
+        editForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const updatedName = document.getElementById('editCompanyFormNameField').value;
+          const updatedIndustry = document.getElementById('editCompanyFormIndustryField').value;
 
-      const { error: updateError } = await supabase
-        .from('companies')
-        .update({
-          name: updatedName,
-          industry: updatedIndustry
-        })
-        .eq('id', company.id)
-        .eq('user_id', currentUser.id);
+          const { error: updateError } = await supabase
+            .from('companies')
+            .update({
+              name: updatedName,
+              industry: updatedIndustry
+            })
+            .eq('id', company.id)
+            .eq('user_id', currentUser.id);
 
-      if (updateError) {
-        console.error("Error updating company:", updateError.message);
-        alert("Błąd podczas aktualizacji firmy: " + updateError.message);
-      } else {
-        renderCompanies(container);
-      }
-    };
-
-    document.getElementById('cancelEditCompanyBtn').onclick = () => {
-      renderCompanies(container);
-    };
-
+          if (updateError) {
+            console.error("Error updating company:", updateError.message);
+            alert("Błąd podczas aktualizacji firmy: " + updateError.message);
+          } else {
+            renderCompanies(container);
+          }
+        };
+    }
+    const cancelBtn = document.getElementById('cancelEditCompanyBtnAction');
+    if (cancelBtn) {
+        cancelBtn.onclick = () => {
+          renderCompanies(container);
+        };
+    }
   } catch (err) {
     console.error("Error displaying edit company form:", err.message);
     container.innerHTML = `<p class="error-message">Błąd ładowania formularza edycji: ${err.message}</p>`;
   }
 }
 
-// --- Główna funkcja renderująca listę firm ---
 export async function renderCompanies(container) {
   container.innerHTML = `<p class="loading-message">Ładowanie firm...</p>`;
   try {
     const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
+    if (userError) {
+        console.error("Error fetching user for companies:", userError.message);
+        container.innerHTML = "<p class='error-message'>Błąd pobierania danych użytkownika.</p>";
+        return;
+    }
     if (!currentUser) {
       console.log("renderCompanies: User not logged in.");
-      container.innerHTML = "<p class='error-message'>Proszę się zalogować, aby zobaczyć firmy.</p>";
+      container.innerHTML = "<p class='error-message'>Proszę się zalogować.</p>";
       return;
     }
 
@@ -88,7 +89,11 @@ export async function renderCompanies(container) {
       .eq('user_id', currentUser.id)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching companies:", error.message);
+      container.innerHTML = `<p class="error-message">Błąd ładowania firm: ${error.message}</p>`;
+      return;
+    }
 
     let html = '<h2>Firmy</h2>';
     if (companies && companies.length > 0) {
@@ -107,15 +112,12 @@ export async function renderCompanies(container) {
     }
 
     html += `
-      <form id="addCompanyForm" class="data-form">
-        <h3>Dodaj nową firmę</h3>
+      <form id="mainAddCompanyForm" class="data-form"> <h3>Dodaj nową firmę</h3>
         <div class="form-group">
-            <label for="companyFormName">Nazwa firmy:</label>
-            <input type="text" id="companyFormName" placeholder="Nazwa firmy" required />
+            <label for="addCompanyFormNameField">Nazwa firmy:</label> <input type="text" id="addCompanyFormNameField" placeholder="Nazwa firmy" required />
         </div>
         <div class="form-group">
-            <label for="companyFormIndustry">Branża:</label>
-            <input type="text" id="companyFormIndustry" placeholder="Branża" />
+            <label for="addCompanyFormIndustryField">Branża:</label> <input type="text" id="addCompanyFormIndustryField" placeholder="Branża" />
         </div>
         <button type="submit">Dodaj Firmę</button>
       </form>
@@ -129,12 +131,12 @@ export async function renderCompanies(container) {
       };
     });
 
-    const addCompanyForm = document.getElementById('addCompanyForm');
+    const addCompanyForm = document.getElementById('mainAddCompanyForm');
     if (addCompanyForm) {
       addCompanyForm.onsubmit = async (e) => {
         e.preventDefault();
-        const name = document.getElementById('companyFormName').value;
-        const industry = document.getElementById('companyFormIndustry').value;
+        const name = document.getElementById('addCompanyFormNameField').value;
+        const industry = document.getElementById('addCompanyFormIndustryField').value;
         const { error: insertError } = await supabase.from('companies').insert([
           { name, industry, user_id: currentUser.id }
         ]);
@@ -148,6 +150,6 @@ export async function renderCompanies(container) {
     }
   } catch (err) {
     console.error("General error in renderCompanies:", err.message);
-    container.innerHTML = `<p class="error-message">Wystąpił nieoczekiwany błąd: ${err.message}. Spróbuj odświeżyć stronę.</p>`;
+    container.innerHTML = `<p class="error-message">Wystąpił nieoczekiwany błąd: ${err.message}.</p>`;
   }
 }
