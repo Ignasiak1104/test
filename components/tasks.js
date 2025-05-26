@@ -66,8 +66,8 @@ async function displayEditTaskForm(taskId, container, currentUser) {
             </select>
           </div>
           <div class="edit-form-buttons">
-            <button type="submit">Zapisz Zmiany</button>
-            <button type="button" class="cancel-btn" id="cancelEditTaskBtnAction">Anuluj</button>
+            <button type="submit" class="btn btn-primary">Zapisz Zmiany</button>
+            <button type="button" class="btn btn-secondary cancel-btn" id="cancelEditTaskBtnAction">Anuluj</button>
           </div>
         </form>
       </div>
@@ -201,7 +201,7 @@ export async function renderTasks(container) {
                 ${companiesForSelect.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
             </select>
         </div>
-        <button type="submit">Dodaj Zadanie</button>
+        <button type="submit" class="btn btn-success">Dodaj Zadanie</button>
       </form>
     `;
     container.innerHTML = html;
