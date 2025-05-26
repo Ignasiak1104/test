@@ -141,6 +141,7 @@ nav#side-nav {
   flex-direction: column;
   align-items: stretch;
   box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+  flex-shrink: 0; /* Zapobiega kurczeniu się nawigacji */
 }
 
 .nav-button {
@@ -195,6 +196,12 @@ li.list-item {
   margin-bottom: 10px;
   border-radius: 5px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex; /* Umożliwia rozmieszczenie divów wewnątrz */
+  justify-content: space-between; /* Rozmieszcza treść i akcje */
+  align-items: flex-start; /* Wyrównuje do góry */
+}
+.list-item > div:first-child { /* Kontener na treść elementu listy */
+    flex-grow: 1;
 }
 .list-item p {
     margin: 4px 0;
@@ -203,6 +210,36 @@ li.list-item {
 .list-item span.label {
     font-weight: 500;
     color: #555;
+}
+.list-item-actions, .kanban-card-actions {
+  margin-top: 5px; /* Zmniejszony margines dla akcji w liście */
+  margin-left: 15px; /* Odstęp od treści */
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0; /* Zapobiega kurczeniu się przycisków */
+}
+
+.edit-btn, .delete-btn {
+  padding: 5px 10px;
+  font-size: 0.9em;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+  color: var(--text-light);
+}
+
+.edit-btn {
+  background-color: var(--primary-color);
+}
+.edit-btn:hover {
+  opacity: 0.85;
+}
+
+.delete-btn {
+  background-color: var(--danger-color);
+}
+.delete-btn:hover {
+  opacity: 0.85;
 }
 
 form.data-form {
@@ -231,12 +268,53 @@ form.data-form button[type="submit"]:hover {
     background-color: #218838;
 }
 
+/* Kontener dla formularza edycji */
+.edit-form-container {
+  padding: 25px;
+  background-color: #fdfdfd;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-top: 20px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.07);
+}
+
+.edit-form-container h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: var(--primary-color);
+  font-size: 1.4em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+.edit-form-buttons {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.edit-form-buttons button {
+  padding: 10px 15px;
+  font-size: 1em;
+}
+
+.edit-form-buttons .cancel-btn {
+  background-color: var(--secondary-color);
+  color: var(--text-light);
+}
+.edit-form-buttons .cancel-btn:hover {
+  opacity: 0.85;
+}
+
+
+/* Style dla widoku Kanban (Deals) */
 #kanban-board {
   display: flex;
   gap: 20px;
   width: 100%;
   overflow-x: auto;
   padding-bottom: 15px;
+  align-items: flex-start; /* Wyrównuje kolumny od góry */
 }
 
 .kanban-column {
@@ -247,6 +325,7 @@ form.data-form button[type="submit"]:hover {
   border-radius: 6px;
   padding: 15px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+  /* display: flex; flex-direction: column; */ /* Aby karty wypełniały od góry */
 }
 
 .kanban-column h3 {
@@ -258,6 +337,9 @@ form.data-form button[type="submit"]:hover {
   text-align: center;
   color: var(--secondary-color);
 }
+.kanban-cards-container {
+    min-height: 50px; /* Minimalna wysokość, aby strefa upuszczania była zawsze dostępna */
+}
 
 .kanban-card {
   background-color: var(--text-light);
@@ -268,6 +350,7 @@ form.data-form button[type="submit"]:hover {
   border-radius: 4px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   cursor: grab;
+  transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 .kanban-card:last-child {
   margin-bottom: 0;
@@ -287,6 +370,28 @@ form.data-form button[type="submit"]:hover {
 }
 .kanban-card p.value {
     font-weight: bold;
+}
+
+.kanban-card.dragging {
+  opacity: 0.4;
+  transform: rotate(2deg) scale(1.05);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  cursor: grabbing;
+}
+
+.kanban-column.over {
+  background-color: #e9ecef;
+  border: 2px dashed var(--primary-color);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.noselect {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .form-group select {
@@ -316,14 +421,16 @@ form.data-form button[type="submit"]:hover {
     flex-direction: row;
     overflow-x: auto;
     padding: 5px 0;
-    justify-content: center;
+    justify-content: flex-start; /* Zmienione na flex-start */
   }
   .nav-button {
     margin: 5px;
     text-align: center;
+    padding: 10px 15px; /* Dopasowanie paddingu */
   }
   .nav-button.logout {
-    margin-left: 5px;
+    margin-left: auto; /* Logout na prawo w mobilnej nawigacji */
+    margin-right: 5px;
   }
   #kanban-board {
     flex-direction: column;
@@ -333,5 +440,13 @@ form.data-form button[type="submit"]:hover {
   .kanban-column {
     min-width: unset;
     max-width: 100%;
+  }
+  li.list-item {
+    flex-direction: column; /* Akcje pod treścią na małych ekranach */
+    align-items: flex-start;
+  }
+  .list-item-actions {
+    margin-left: 0; /* Usunięcie marginesu, gdy akcje są poniżej */
+    margin-top: 10px;
   }
 }
