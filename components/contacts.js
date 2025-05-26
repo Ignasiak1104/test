@@ -18,18 +18,24 @@ async function displayEditContactForm(contactId, container, currentUser) {
     let html = `
       <div class="edit-form-container">
         <h3>Edytuj Kontakt</h3>
-        <form id="specificEditContactForm" class="data-form"> <input type="hidden" id="editContactFormIdField" value="${contact.id}"> <div class="form-group">
-            <label for="editContactFormFirstNameField">Imię:</label> <input type="text" id="editContactFormFirstNameField" value="${contact.first_name}" required />
+        <form id="specificEditContactForm" class="data-form">
+          <input type="hidden" id="editContactFormIdField" value="${contact.id}">
+          <div class="form-group">
+            <label for="editContactFormFirstNameField">Imię:</label>
+            <input type="text" id="editContactFormFirstNameField" value="${contact.first_name}" required />
           </div>
           <div class="form-group">
-            <label for="editContactFormLastNameField">Nazwisko:</label> <input type="text" id="editContactFormLastNameField" value="${contact.last_name}" required />
+            <label for="editContactFormLastNameField">Nazwisko:</label>
+            <input type="text" id="editContactFormLastNameField" value="${contact.last_name}" required />
           </div>
           <div class="form-group">
-            <label for="editContactFormEmailField">Email:</label> <input type="email" id="editContactFormEmailField" value="${contact.email}" required />
+            <label for="editContactFormEmailField">Email:</label>
+            <input type="email" id="editContactFormEmailField" value="${contact.email}" required />
           </div>
           <div class="edit-form-buttons">
             <button type="submit">Zapisz Zmiany</button>
-            <button type="button" class="cancel-btn" id="cancelEditContactBtnAction">Anuluj</button> </div>
+            <button type="button" class="cancel-btn" id="cancelEditContactBtnAction">Anuluj</button>
+          </div>
         </form>
       </div>
     `;
@@ -119,15 +125,19 @@ export async function renderContacts(container) {
     }
 
     html += `
-      <form id="mainAddContactForm" class="data-form"> <h3>Dodaj nowy kontakt</h3>
+      <form id="mainAddContactForm" class="data-form">
+        <h3>Dodaj nowy kontakt</h3>
         <div class="form-group">
-          <label for="addContactFormFirstName">Imię:</label> <input type="text" id="addContactFormFirstName" placeholder="Imię" required />
+          <label for="addContactFormFirstName">Imię:</label>
+          <input type="text" id="addContactFormFirstName" placeholder="Imię" required />
         </div>
         <div class="form-group">
-          <label for="addContactFormLastName">Nazwisko:</label> <input type="text" id="addContactFormLastName" placeholder="Nazwisko" required />
+          <label for="addContactFormLastName">Nazwisko:</label>
+          <input type="text" id="addContactFormLastName" placeholder="Nazwisko" required />
         </div>
         <div class="form-group">
-          <label for="addContactFormEmailInput">Email:</label> <input type="email" id="addContactFormEmailInput" placeholder="Email" required />
+          <label for="addContactFormEmailInput">Email:</label>
+          <input type="email" id="addContactFormEmailInput" placeholder="Email" required />
         </div>
         <button type="submit">Dodaj Kontakt</button>
       </form>
