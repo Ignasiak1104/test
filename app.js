@@ -6,39 +6,36 @@ import { renderCompanies } from './components/companies.js';
 import { renderDeals } from './components/deals.js';
 import { renderTasks } from './components/tasks.js';
 
-let appContainerElement = null; // Zmieniono nazwę, aby uniknąć konfliktu z potencjalną globalną zmienną
-let authDivElement = null;      // Zmieniono nazwę
+let appContainerElement = null;
+let authDivElement = null;
 let currentActiveButton = null;
 
-function setActiveButton(button) {
+function setActiveButton(buttonToActivate) {
     if (currentActiveButton) {
         currentActiveButton.classList.remove('active');
     }
-    if (button) {
-        button.classList.add('active');
-        currentActiveButton = button;
+    if (buttonToActivate) {
+        buttonToActivate.classList.add('active');
+        currentActiveButton = buttonToActivate;
     } else {
-        console.warn("setActiveButton: Próba ustawienia aktywnego przycisku na null");
+        console.warn("setActiveButton: Próba ustawienia aktywnego przycisku na null lub nieistniejący element.");
     }
 }
 
 export function showAppUI() {
-  // Te elementy powinny być już zainicjowane przez DOMContentLoaded
+  if (!authDivElement) authDivElement = document.getElementById('auth');
+  if (!appContainerElement) appContainerElement = document.getElementById('app-container');
+
   if (!authDivElement || !appContainerElement) {
-    console.error('app.js (showAppUI): Kluczowe kontenery (authDivElement lub appContainerElement) nie są zainicjowane!');
-    // Awaryjnie spróbuj pobrać je ponownie, ale to nie powinno być potrzebne
-    authDivElement = document.getElementById('auth');
-    appContainerElement = document.getElementById('app-container');
-    if (!authDivElement || !appContainerElement) {
-        document.body.innerHTML = "<h1>Krytyczny błąd UI: Nie można wyświetlić interfejsu aplikacji.</h1>";
-        return;
-    }
+    console.error('app.js (showAppUI): Kluczowe kontenery (authDivElement lub appContainerElement) nie są dostępne!');
+    if (document.body) document.body.innerHTML = "<h1>Krytyczny błąd UI: Nie można wyświetlić interfejsu aplikacji. Elementy #auth lub #app-container nie znalezione.</h1>";
+    return;
   }
 
   console.log("app.js: showAppUI called");
   authDivElement.style.display = 'none';
   appContainerElement.style.display = 'flex';
-  appContainerElement.innerHTML = ''; // Czyścimy tylko jeśli pewni, że to kontener aplikacji
+  appContainerElement.innerHTML = '';
 
   const nav = document.createElement('nav');
   nav.id = 'side-nav';
@@ -75,7 +72,7 @@ export function showAppUI() {
             console.error('app.js: Error logging out:', error);
             alert('Wystąpił błąd podczas wylogowywania: ' + error.message);
         }
-        // handleAuthState zostanie wywołane przez onAuthStateChange
+        // Stan zostanie obsłużony przez onAuthStateChange
     };
   }
 
@@ -83,40 +80,36 @@ export function showAppUI() {
     renderContacts(contentArea);
     setActiveButton(contactsBtn);
   } else {
-    console.warn("app.js (showAppUI): Domyślny przycisk kontaktów nie znaleziony. Nie można ustawić widoku początkowego.");
-    contentArea.innerHTML = "<p>Wybierz opcję z menu lub sprawdź konsolę pod kątem błędów ładowania przycisków.</p>";
+    console.warn("app.js (showAppUI): Domyślny przycisk kontaktów nie znaleziony.");
+    contentArea.innerHTML = "<p>Wybierz opcję z menu.</p>";
   }
 }
 
-// --- Główna logika aplikacji uruchamiana po załadowaniu DOM ---
 document.addEventListener('DOMContentLoaded', () => {
-  console.log("app.js: DOMContentLoaded event fired. Dokument powinien być w pełni załadowany.");
+  console.log("app.js: DOMContentLoaded event fired.");
 
-  // Pobieranie elementów DOM po załadowaniu strony
   appContainerElement = document.getElementById('app-container');
   authDivElement = document.getElementById('auth');
 
   if (!appContainerElement) {
-    console.error("app.js (DOMContentLoaded): Element #app-container NIE ZOSTAŁ ZNALEZIONY W DOM!");
-    // Można spróbować dodać bardziej widoczny błąd na stronie, jeśli to się dzieje
-    if (document.body) document.body.innerHTML = "<h1>BŁĄD KRYTYCZNY: Brak elementu #app-container w HTML.</h1>" + document.body.innerHTML;
+    console.error("app.js (DOMContentLoaded): Element #app-container NIE ZOSTAŁ ZNALEZIONY!");
+    if (document.body) document.body.innerHTML = "<h1>BŁĄD KRYTYCZNY: Brak elementu #app-container w HTML.</h1>" + (document.body.innerHTML || "");
   } else {
     console.log("app.js (DOMContentLoaded): Element #app-container ZNALEZIONY.");
   }
 
   if (!authDivElement) {
-    console.error("app.js (DOMContentLoaded): Element #auth NIE ZOSTAŁ ZNALEZIONY W DOM!");
-    if (document.body) document.body.innerHTML = "<h1>BŁĄD KRYTYCZNY: Brak elementu #auth w HTML.</h1>" + document.body.innerHTML;
+    console.error("app.js (DOMContentLoaded): Element #auth NIE ZOSTAŁ ZNALEZIONY!");
+    if (document.body) document.body.innerHTML = "<h1>BŁĄD KRYTYCZNY: Brak elementu #auth w HTML.</h1>" + (document.body.innerHTML || "");
   } else {
     console.log("app.js (DOMContentLoaded): Element #auth ZNALEZIONY.");
   }
 
-  // Kontynuuj tylko jeśli oba kluczowe kontenery istnieją
   if (appContainerElement && authDivElement) {
-    console.log("app.js (DOMContentLoaded): Oba kontenery (#app-container, #auth) znalezione. Ustawianie obsługi Supabase...");
+    console.log("app.js (DOMContentLoaded): Oba kontenery znalezione. Inicjalizacja Supabase auth...");
 
     supabase.auth.onAuthStateChange((event, session) => {
-      console.log('app.js (onAuthStateChange): Zdarzenie zmiany stanu autoryzacji:', event, "Sesja:", session);
+      console.log('app.js (onAuthStateChange): Zdarzenie:', event, "Sesja:", session);
       handleAuthState(session, authDivElement, appContainerElement);
     });
 
@@ -126,26 +119,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-            console.error('app.js (DOMContentLoaded async): Błąd podczas pobierania obiektu sesji początkowej:', error);
+            console.error('app.js (DOMContentLoaded async): Błąd podczas pobierania sesji początkowej:', error);
         }
         console.log('app.js (DOMContentLoaded async): Sesja początkowa:', session);
         handleAuthState(session, authDivElement, appContainerElement);
       } catch (error) {
         console.error('app.js (DOMContentLoaded async): Krytyczny błąd podczas pobierania sesji początkowej:', error);
-        // Jeśli jest błąd, ale authDivElement istnieje, pokaż logowanie
         if (authDivElement) {
-            console.log("app.js (DOMContentLoaded async): Awaryjne wywołanie showLogin() z powodu błędu.");
-            showLogin(authDivElement); // showLogin jest z login.js i powinno przyjąć authDivElement
+            console.log("app.js (DOMContentLoaded async): Awaryjne wywołanie showLogin().");
+            showLogin(authDivElement);
         } else if (document.body) {
-            document.body.innerHTML = "<h1>Krytyczny błąd podczas inicjalizacji sesji. Sprawdź konsolę.</h1>";
+            document.body.innerHTML = "<h1>Krytyczny błąd inicjalizacji sesji.</h1>";
         }
       }
     })();
   } else {
-    console.error("app.js (DOMContentLoaded): Jeden lub oba kluczowe kontenery (#app-container, #auth) nie istnieją. Aplikacja nie może poprawnie wystartować.");
-    // Nie zmieniaj document.body.innerHTML tutaj, bo poprzednie logi już to zrobiłyby, jeśli tylko jeden brakował.
-    // Jeśli oba brakują, to HTML jest poważnie uszkodzony.
+    console.error("app.js (DOMContentLoaded): Jeden lub oba kluczowe kontenery nie istnieją. Aplikacja nie może wystartować.");
   }
 });
 
-console.log("app.js: Skrypt zakończył parsowanie. Nasłuchiwanie na DOMContentLoaded ustawione.");
+console.log("app.js: Skrypt zakończył parsowanie.");
