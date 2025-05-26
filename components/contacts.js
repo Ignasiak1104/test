@@ -2,19 +2,7 @@
 import { supabaseClient as supabase } from '../auth/init.js';
 
 async function displayEditContactForm(contactId, container, currentUser) {
-  container.innerHTML = `<p class="loading-message">Ładowanie danych kontaktu...</p>`;
-  try {
-    const { data: contact, error } = await supabase
-      .from('contacts')
-      .select('*')
-      .eq('id', contactId)
-      .eq('user_id', currentUser.id)
-      .single();
-
-    if (error || !contact) {
-      throw error || new Error("Nie znaleziono kontaktu lub brak uprawnień.");
-    }
-
+  // ... (reszta kodu funkcji bez zmian, aż do formularza) ...
     let html = `
       <div class="edit-form-container">
         <h3>Edytuj Kontakt</h3>
@@ -33,97 +21,18 @@ async function displayEditContactForm(contactId, container, currentUser) {
             <input type="email" id="editContactFormEmailField" value="${contact.email}" required />
           </div>
           <div class="edit-form-buttons">
-            <button type="submit">Zapisz Zmiany</button>
-            <button type="button" class="cancel-btn" id="cancelEditContactBtnAction">Anuluj</button>
+            {/* ZMIANA KLAS PRZYCISKÓW */}
+            <button type="submit" class="btn btn-primary">Zapisz Zmiany</button>
+            <button type="button" class="btn btn-secondary cancel-btn" id="cancelEditContactBtnAction">Anuluj</button>
           </div>
         </form>
       </div>
     `;
-    container.innerHTML = html;
-
-    const editForm = document.getElementById('specificEditContactForm');
-    if (editForm) {
-        editForm.onsubmit = async (e) => {
-          e.preventDefault();
-          const updatedFirstName = document.getElementById('editContactFormFirstNameField').value;
-          const updatedLastName = document.getElementById('editContactFormLastNameField').value;
-          const updatedEmail = document.getElementById('editContactFormEmailField').value;
-
-          const { error: updateError } = await supabase
-            .from('contacts')
-            .update({
-              first_name: updatedFirstName,
-              last_name: updatedLastName,
-              email: updatedEmail
-            })
-            .eq('id', contact.id)
-            .eq('user_id', currentUser.id);
-
-          if (updateError) {
-            console.error("Error updating contact:", updateError.message);
-            alert("Błąd podczas aktualizacji kontaktu: " + updateError.message);
-          } else {
-            renderContacts(container);
-          }
-        };
-    }
-
-    const cancelBtn = document.getElementById('cancelEditContactBtnAction');
-    if (cancelBtn) {
-        cancelBtn.onclick = () => {
-          renderContacts(container);
-        };
-    }
-
-  } catch (err) {
-    console.error("Error displaying edit contact form:", err.message);
-    container.innerHTML = `<p class="error-message">Błąd ładowania formularza edycji: ${err.message}</p>`;
-  }
+  // ... (reszta kodu funkcji bez zmian) ...
 }
 
 export async function renderContacts(container) {
-  container.innerHTML = `<p class="loading-message">Ładowanie kontaktów...</p>`;
-  try {
-    const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-    if (userError) {
-        console.error("Error fetching user for contacts:", userError.message);
-        container.innerHTML = "<p class='error-message'>Błąd pobierania danych użytkownika.</p>";
-        return;
-    }
-    if (!currentUser) {
-      console.log("renderContacts: User not logged in.");
-      container.innerHTML = "<p class='error-message'>Proszę się zalogować.</p>";
-      return;
-    }
-
-    const { data: contacts, error } = await supabase
-      .from('contacts')
-      .select('*')
-      .eq('user_id', currentUser.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error("Error fetching contacts:", error.message);
-      container.innerHTML = `<p class="error-message">Błąd ładowania kontaktów: ${error.message}</p>`;
-      return;
-    }
-
-    let html = '<h2>Kontakty</h2>';
-    if (contacts && contacts.length > 0) {
-      html += '<ul>' + contacts.map(c =>
-        `<li class="list-item">
-            <div>
-                <p><span class="label">Imię i Nazwisko:</span> ${c.first_name} ${c.last_name}</p>
-                <p><span class="label">Email:</span> ${c.email}</p>
-            </div>
-            <div class="list-item-actions">
-                <button class="edit-btn" data-id="${c.id}">Edytuj</button>
-            </div>
-        </li>`).join('') + '</ul>';
-    } else {
-      html += '<p>Nie masz jeszcze żadnych kontaktów.</p>';
-    }
-
+  // ... (reszta kodu funkcji bez zmian, aż do formularza dodawania) ...
     html += `
       <form id="mainAddContactForm" class="data-form">
         <h3>Dodaj nowy kontakt</h3>
@@ -139,40 +48,16 @@ export async function renderContacts(container) {
           <label for="addContactFormEmailInput">Email:</label>
           <input type="email" id="addContactFormEmailInput" placeholder="Email" required />
         </div>
-        <button type="submit">Dodaj Kontakt</button>
+        {/* ZMIANA KLAS PRZYCISKÓW */}
+        <button type="submit" class="btn btn-success">Dodaj Kontakt</button>
       </form>
     `;
-    container.innerHTML = html;
-
-    container.querySelectorAll('.edit-btn').forEach(button => {
-      button.onclick = (e) => {
-        const contactId = e.target.dataset.id;
-        displayEditContactForm(contactId, container, currentUser);
-      };
-    });
-
-    const addContactForm = document.getElementById('mainAddContactForm');
-    if (addContactForm) {
-      addContactForm.onsubmit = async (e) => {
-        e.preventDefault();
-        const first_name = document.getElementById('addContactFormFirstName').value;
-        const last_name = document.getElementById('addContactFormLastName').value;
-        const email = document.getElementById('addContactFormEmailInput').value;
-
-        const { error: insertError } = await supabase.from('contacts').insert([
-          { first_name, last_name, email, user_id: currentUser.id }
-        ]);
-
-        if (insertError) {
-          console.error("Error adding contact:", insertError.message);
-          alert("Błąd podczas dodawania kontaktu: " + insertError.message);
-        } else {
-          renderContacts(container);
-        }
-      };
-    }
-  } catch (err) {
-    console.error("General error in renderContacts:", err.message);
-    container.innerHTML = `<p class="error-message">Wystąpił nieoczekiwany błąd: ${err.message}.</p>`;
-  }
+  // ... (reszta kodu funkcji, w tym dodawanie przycisków edycji, które dziedziczą styl z .edit-btn) ...
+  // Przycisk edycji w liście:
+  // <button class="edit-btn btn btn-primary" data-id="${c.id}">Edytuj</button>
+  // Powyżej `.edit-btn` ma już swoje style, ale można dodać `.btn` dla spójności bazowej i np. `.btn-primary` lub `.btn-secondary`
+  // Jednak `.edit-btn` zostało zdefiniowane jako mały przycisk, więc może wystarczyć:
+  // <button class="edit-btn" data-id="${c.id}">Edytuj</button>
+  // Jeśli chcesz, aby przyciski edycji były większe, możesz użyć np. <button class="btn btn-sm btn-primary edit-btn-action" data-id="${c.id}">Edytuj</button>
+  // i dodać style dla .btn-sm oraz .edit-btn-action. Dla prostoty zostawiam .edit-btn jak był.
 }
