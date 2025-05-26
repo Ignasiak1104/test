@@ -1,19 +1,19 @@
-// login.js
-import { supabase } from './init.js'; //
-import { showAppUI } from '../app.js'; //
+// auth/login.js
+import { supabaseClient as supabase } from './init.js'; // ZMIANA TUTAJ
+import { showAppUI } from '../app.js';
 
 export function handleAuthState(session) {
-  console.log("login.js: handleAuthState called with session:", session); // Log: Wywołanie handleAuthState
+  console.log("login.js: handleAuthState called with session:", session);
   if (session) {
-    showAppUI(); //
+    showAppUI();
   } else {
-    showLogin(); //
+    showLogin();
   }
 }
 
 export function showLogin() {
-  console.log("login.js: showLogin called"); // Log: Wywołanie showLogin
-  const authDiv = document.getElementById('auth'); //
+  console.log("login.js: showLogin called");
+  const authDiv = document.getElementById('auth');
   if (!authDiv) {
     console.error("login.js: Auth div not found for login form!");
     if (document.body) {
@@ -27,9 +27,9 @@ export function showLogin() {
 
   const appDiv = document.getElementById('app');
   if (appDiv) {
-    appDiv.style.display = 'none'; // Ukryj główną zawartość aplikacji
+    appDiv.style.display = 'none';
   }
-  authDiv.style.display = 'block'; // Pokaż kontener logowania
+  authDiv.style.display = 'block';
 
   authDiv.innerHTML = `
     <div class="login-container">
@@ -48,42 +48,38 @@ export function showLogin() {
       </div>
       <p id="auth-message" class="auth-message"></p>
     </div>
-  `; //
+  `;
 
   const messageEl = document.getElementById('auth-message');
 
-  document.getElementById('loginBtn').onclick = async () => { //
+  document.getElementById('loginBtn').onclick = async () => {
     messageEl.textContent = '';
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    console.log("login.js: Login attempt for:", email); // Log: Próba logowania
+    console.log("login.js: Login attempt for:", email);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password }); //
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       console.log("login.js: Login successful (onAuthStateChange will handle UI)");
-      // Nie ma potrzeby location.reload(), onAuthStateChange to obsłuży
     } catch (error) {
       console.error("login.js: Login error:", error.message);
       messageEl.textContent = "Logowanie nie powiodło się: " + error.message;
-      // alert("Logowanie nie powiodło się: " + error.message);
     }
   };
 
-  document.getElementById('registerBtn').onclick = async () => { //
+  document.getElementById('registerBtn').onclick = async () => {
     messageEl.textContent = '';
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    console.log("login.js: Register attempt for:", email); // Log: Próba rejestracji
+    console.log("login.js: Register attempt for:", email);
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password }); //
+      const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
       console.log("login.js: Registration successful, pending confirmation:", data);
       messageEl.textContent = "Sprawdź email, aby potwierdzić rejestrację.";
-      // alert("Sprawdź email, aby potwierdzić rejestrację."); //
     } catch (error) {
       console.error("login.js: Registration error:", error.message);
       messageEl.textContent = "Rejestracja nie powiodła się: " + error.message;
-      // alert("Rejestracja nie powiodła się: " + error.message);
     }
   };
 }
