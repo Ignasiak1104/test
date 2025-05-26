@@ -33,34 +33,42 @@ async function displayEditDealForm(dealId, container, currentUser) {
     let html = `
       <div class="edit-form-container">
         <h3>Edytuj Szansę Sprzedaży</h3>
-        <form id="specificEditDealForm" class="data-form"> <input type="hidden" id="editDealFormIdField" value="${deal.id}"> <div class="form-group">
-            <label for="editDealFormTitleField">Tytuł:</label> <input type="text" id="editDealFormTitleField" value="${deal.title}" required />
+        <form id="specificEditDealForm" class="data-form">
+          <input type="hidden" id="editDealFormIdField" value="${deal.id}">
+          <div class="form-group">
+            <label for="editDealFormTitleField">Tytuł:</label>
+            <input type="text" id="editDealFormTitleField" value="${deal.title}" required />
           </div>
           <div class="form-group">
-            <label for="editDealFormValueField">Wartość ($):</label> <input type="number" id="editDealFormValueField" value="${deal.value || ''}" step="0.01" />
+            <label for="editDealFormValueField">Wartość ($):</label>
+            <input type="number" id="editDealFormValueField" value="${deal.value || ''}" step="0.01" />
           </div>
           <div class="form-group">
-            <label for="editDealFormStatusField">Status:</label> <select id="editDealFormStatusField">
+            <label for="editDealFormStatusField">Status:</label>
+            <select id="editDealFormStatusField">
               <option value="open" ${deal.status === 'open' ? 'selected' : ''}>Otwarta</option>
               <option value="won" ${deal.status === 'won' ? 'selected' : ''}>Wygrana</option>
               <option value="lost" ${deal.status === 'lost' ? 'selected' : ''}>Przegrana</option>
             </select>
           </div>
           <div class="form-group">
-            <label for="editDealFormContactField">Powiąż z kontaktem:</label> <select id="editDealFormContactField">
+            <label for="editDealFormContactField">Powiąż z kontaktem:</label>
+            <select id="editDealFormContactField">
               <option value="">Wybierz kontakt...</option>
               ${contactsForSelect.map(c => `<option value="${c.id}" ${deal.contact_id === c.id ? 'selected' : ''}>${c.first_name} ${c.last_name}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label for="editDealFormCompanyField">Powiąż z firmą:</label> <select id="editDealFormCompanyField">
+            <label for="editDealFormCompanyField">Powiąż z firmą:</label>
+            <select id="editDealFormCompanyField">
               <option value="">Wybierz firmę...</option>
               ${companiesForSelect.map(c => `<option value="${c.id}" ${deal.company_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
             </select>
           </div>
           <div class="edit-form-buttons">
             <button type="submit">Zapisz Zmiany</button>
-            <button type="button" class="cancel-btn" id="cancelEditDealBtnAction">Anuluj</button> </div>
+            <button type="button" class="cancel-btn" id="cancelEditDealBtnAction">Anuluj</button>
+          </div>
         </form>
       </div>
     `;
@@ -125,7 +133,7 @@ async function updateDealStatusOnDrop(dealId, newStatus, container, currentUser)
     } catch (error) {
         console.error('Error updating deal status on drop:', error.message);
         alert('Błąd podczas aktualizacji statusu szansy: ' + error.message);
-        renderDeals(container); // Odśwież, aby zresetować UI
+        renderDeals(container);
     }
 }
 
@@ -198,28 +206,34 @@ export async function renderDeals(container) {
     html += '</div>';
 
     html += `
-      <form id="mainAddDealForm" class="data-form"> <h3>Dodaj nową szansę sprzedaży</h3>
+      <form id="mainAddDealForm" class="data-form">
+        <h3>Dodaj nową szansę sprzedaży</h3>
         <div class="form-group">
-            <label for="addDealFormTitleField">Tytuł:</label> <input type="text" id="addDealFormTitleField" placeholder="Tytuł szansy" required />
+            <label for="addDealFormTitleField">Tytuł:</label>
+            <input type="text" id="addDealFormTitleField" placeholder="Tytuł szansy" required />
         </div>
         <div class="form-group">
-            <label for="addDealFormValueField">Wartość ($):</label> <input type="number" id="addDealFormValueField" placeholder="Wartość" step="0.01" />
+            <label for="addDealFormValueField">Wartość ($):</label>
+            <input type="number" id="addDealFormValueField" placeholder="Wartość" step="0.01" />
         </div>
         <div class="form-group">
-            <label for="addDealFormStatusField">Status:</label> <select id="addDealFormStatusField">
+            <label for="addDealFormStatusField">Status:</label>
+            <select id="addDealFormStatusField">
                 <option value="open">Otwarta</option>
                 <option value="won">Wygrana</option>
                 <option value="lost">Przegrana</option>
             </select>
         </div>
         <div class="form-group">
-            <label for="addDealFormContactField">Powiąż z kontaktem:</label> <select id="addDealFormContactField">
+            <label for="addDealFormContactField">Powiąż z kontaktem:</label>
+            <select id="addDealFormContactField">
                 <option value="">Wybierz kontakt...</option>
                 ${contactsForSelect.map(c => `<option value="${c.id}">${c.first_name} ${c.last_name}</option>`).join('')}
             </select>
         </div>
         <div class="form-group">
-            <label for="addDealFormCompanyField">Powiąż z firmą:</label> <select id="addDealFormCompanyField">
+            <label for="addDealFormCompanyField">Powiąż z firmą:</label>
+            <select id="addDealFormCompanyField">
                 <option value="">Wybierz firmę...</option>
                 ${companiesForSelect.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
             </select>
@@ -290,6 +304,8 @@ export async function renderDeals(container) {
 
     container.querySelectorAll('.kanban-card .edit-btn').forEach(button => {
         button.onclick = (e) => {
+            // Zapobiegaj uruchomieniu drag & drop, jeśli kliknięto przycisk edycji
+            e.stopPropagation(); 
             const dealId = e.target.dataset.id;
             displayEditDealForm(dealId, container, currentUser);
         };
