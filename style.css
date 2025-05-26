@@ -1,18 +1,217 @@
+/* style.css */
 body {
-  font-family: Arial, sans-serif;
-  background-color: #f4f4f4;
-  padding: 20px;
-}
-h1 {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f0f2f5;
+  margin: 0;
+  padding: 0;
   color: #333;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
 }
-nav button {
-  margin-right: 10px;
+
+h1 { /* Główny tytuł CRM App */
+  color: #2c3e50;
+  margin-top: 20px;
+  margin-bottom: 20px;
 }
-input, select, button {
-  margin: 5px;
+
+/* Kontener autoryzacji */
+#auth {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* Zmienione z center na flex-start, aby formularz był wyżej */
+  padding-top: 50px; /* Dodaje trochę przestrzeni od góry */
 }
+
+.login-container {
+  background-color: #ffffff;
+  padding: 25px 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+}
+
+.login-container h2 {
+  margin-bottom: 20px;
+  color: #333;
+  font-weight: 600;
+}
+
+.form-group {
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #555;
+}
+
+input[type="email"],
+input[type="password"],
+input[type="text"],
+input[type="date"],
+input[type="number"],
+select {
+  width: calc(100% - 20px); /* Uwzględnia padding inputu */
+  padding: 10px;
+  margin-bottom: 5px; /* Zmniejszony margines, bo jest w form-group */
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 15px;
+}
+
+.button-group {
+  display: flex;
+  justify-content: space-between; /* Rozmieszcza przyciski */
+  gap: 10px; /* Odstęp między przyciskami */
+  margin-top: 20px;
+}
+
+.auth-button,
+button[type="submit"],
+.nav-button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-button {
+  background-color: #007bff;
+  color: white;
+  flex-grow: 1; /* Przyciski dzielą się dostępną przestrzenią */
+}
+
+.auth-button.register {
+  background-color: #28a745; /* Inny kolor dla rejestracji */
+}
+
+.auth-button:hover {
+  background-color: #0056b3;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.auth-button.register:hover {
+  background-color: #1e7e34;
+}
+
+.auth-message {
+    margin-top: 15px;
+    font-size: 0.9em;
+    color: red; /* Domyślnie na błędy, można zmieniać JSem */
+}
+
+
+/* Główny kontener aplikacji po zalogowaniu */
+#app {
+  display: none; /* Początkowo ukryty */
+  flex-direction: column; /* Zmienione na column, nav na górze, content poniżej */
+  width: 100%;
+  max-width: 1200px; /* Maksymalna szerokość dla dużych ekranów */
+  margin: 0 auto; /* Centrowanie kontenera app */
+  background-color: #fff;
+  /* min-height: calc(100vh - 70px); Dajmy jakąś minimalną wysokość, jeśli h1 jest poza #app */
+}
+
+/* Nawigacja */
+nav {
+  background-color: #343a40;
+  padding: 10px 20px;
+  display: flex; /* Przyciski w jednym rzędzie */
+  justify-content: flex-start; /* Wyrównanie przycisków do lewej */
+  align-items: center;
+  gap: 10px; /* Odstęp między przyciskami */
+  width: 100%; /* Nawigacja na całą szerokość #app */
+  box-sizing: border-box;
+}
+
+.nav-button {
+  background-color: #495057;
+  color: white;
+  margin-right: 0; /* Usunięty margines, używamy gap */
+}
+
+.nav-button:hover {
+  background-color: #6c757d;
+}
+
+.nav-button.logout {
+  background-color: #dc3545;
+  margin-left: auto; /* Wypycha przycisk wyloguj na prawo */
+}
+.nav-button.logout:hover {
+  background-color: #c82333;
+}
+
+/* Kontener na dynamiczną treść */
+#content {
+  padding: 20px;
+  background-color: #ffffff;
+  flex-grow: 1; /* Pozwala #content wypełnić dostępną przestrzeń w #app */
+  width: calc(100% - 40px); /* Uwzględnia padding */
+  box-sizing: border-box;
+}
+
+#content h2 {
+  margin-top: 0;
+  color: #007bff; /* Kolor nagłówków sekcji */
+  border-bottom: 2px solid #eee;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  padding: 10px 15px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 form {
-  margin-top: 10px;
-  margin-bottom: 10px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #fdfdfd;
+  border: 1px solid #eee;
+  border-radius: 5px;
+}
+
+form input, form select, form button {
+  margin-bottom: 10px; /* Dodaje odstęp pod elementami formularza */
+}
+form button[type="submit"] {
+    background-color: #28a745;
+    color: white;
+    display: block; /* Aby przycisk był na całą szerokość formularza (opcjonalne) */
+    width: auto; /* Lub auto, jeśli nie chcesz na całą szerokość */
+    margin-top: 10px;
+}
+form button[type="submit"]:hover {
+    background-color: #218838;
+}
+
+/* Styl dla wiadomości w formularzach dodawania (opcjonalne) */
+.form-message {
+    margin-top: 10px;
+    font-size: 0.9em;
 }
