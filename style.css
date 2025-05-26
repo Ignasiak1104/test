@@ -10,9 +10,61 @@
   --text-dark: #333333;
   --border-color: #dee2e6;
   --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --auth-background: linear-gradient(to bottom right, #a5b4fc, #60a5fa); /* Jaśniejszy gradient dla logowania */
 }
 
-body {
+/* Style dla ekranu logowania (gdy #auth jest aktywne) */
+body.auth-active {
+   background-color: #e0e7ff; /* Jasne tło dla body, gdy logowanie jest aktywne */
+}
+
+#auth { /* Domyślnie #auth nie jest fullscreen */
+  width: 100%;
+  display: none; /* Początkowo ukryty, pokazywany przez JS */
+  justify-content: center;
+  align-items: flex-start; /* Domyślne wyrównanie, zmieniane przez fullscreen-auth */
+  padding-top: 0px; /* Reset, fullscreen-auth zarządza paddingiem */
+  flex-grow: 1;
+}
+
+#auth.fullscreen-auth {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex; /* Zapewnia, że jest flex */
+  align-items: center; /* Wyśrodkowanie w pionie */
+  justify-content: center; /* Wyśrodkowanie w poziomie */
+  background-image: var(--auth-background);
+  padding: 1rem;
+  z-index: 1000;
+  box-sizing: border-box;
+}
+
+/* Style przejścia dla formularzy logowania/rejestracji */
+.fade-toggle {
+  transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+}
+.hidden-opacity {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.95) translateY(10px);
+  position: absolute; /* Kluczowe dla poprawnego działania przejścia w tym samym kontenerze */
+  width: 100%; /* Aby zajmowały całą szerokość kontenera rodzica (div.p-8) */
+  left: 0;
+  top: 0;
+  /* Padding jest dziedziczony z kontenera rodzica, jeśli kontenery form nie mają własnego */
+}
+.visible-opacity {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  position: relative; /* Lub static, jeśli nie ma problemów z nakładaniem */
+}
+
+
+/* Ogólne style aplikacji (poza logowaniem) */
+body { /* Domyślne style body, gdy nie ma auth-active */
   font-family: var(--font-family);
   background-color: #f0f2f5;
   margin: 0;
@@ -33,101 +85,13 @@ h1#main-title {
   font-size: 1.8em;
   font-weight: 600;
 }
-
-#auth {
-  width: 100%;
-  display: flex; /* Domyślnie flex, będzie modyfikowane przez JS */
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 50px;
-  flex-grow: 1;
+h1#main-title.hidden {
+    display: none;
 }
 
-.login-container {
-  background-color: var(--text-light);
-  padding: 25px 30px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 380px;
-  text-align: center;
-}
-
-.login-container h2 {
-  margin-bottom: 20px;
-  color: var(--text-dark);
-  font-weight: 600;
-}
-
-.form-group {
-  margin-bottom: 15px;
-  text-align: left;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
-  color: #555;
-}
-
-input[type="email"],
-input[type="password"],
-input[type="text"],
-input[type="date"],
-input[type="number"],
-select {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-sizing: border-box;
-  font-size: 15px;
-}
-
-.button-group {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.auth-button,
-button[type="submit"],
-.nav-button {
-  padding: 10px 15px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
-  text-align: center;
-}
-
-.auth-button {
-  background-color: var(--primary-color);
-  color: var(--text-light);
-  flex-grow: 1;
-}
-
-.auth-button.register {
-  background-color: var(--success-color);
-}
-
-.auth-button:hover {
-  opacity: 0.9;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.auth-message {
-    margin-top: 15px;
-    font-size: 0.9em;
-    color: var(--danger-color);
-}
 
 #app-container {
-  display: none; /* JS zmieni na 'flex' po zalogowaniu */
+  /* display: none; Ustawiane przez JS */
   flex-direction: row;
   flex-grow: 1;
   width: 100%;
@@ -141,7 +105,7 @@ nav#side-nav {
   flex-direction: column;
   align-items: stretch;
   box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-  flex-shrink: 0; /* Zapobiega kurczeniu się nawigacji */
+  flex-shrink: 0;
 }
 
 .nav-button {
@@ -153,6 +117,8 @@ nav#side-nav {
   text-align: left;
   font-size: 1em;
   border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
 .nav-button:hover, .nav-button.active {
@@ -196,11 +162,11 @@ li.list-item {
   margin-bottom: 10px;
   border-radius: 5px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  display: flex; /* Umożliwia rozmieszczenie divów wewnątrz */
-  justify-content: space-between; /* Rozmieszcza treść i akcje */
-  align-items: flex-start; /* Wyrównuje do góry */
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
 }
-.list-item > div:first-child { /* Kontener na treść elementu listy */
+.list-item > div:first-child {
     flex-grow: 1;
 }
 .list-item p {
@@ -212,11 +178,11 @@ li.list-item {
     color: #555;
 }
 .list-item-actions, .kanban-card-actions {
-  margin-top: 5px; /* Zmniejszony margines dla akcji w liście */
-  margin-left: 15px; /* Odstęp od treści */
+  margin-top: 5px;
+  margin-left: 15px;
   display: flex;
   gap: 10px;
-  flex-shrink: 0; /* Zapobiega kurczeniu się przycisków */
+  flex-shrink: 0;
 }
 
 .edit-btn, .delete-btn {
@@ -226,6 +192,7 @@ li.list-item {
   cursor: pointer;
   border: none;
   color: var(--text-light);
+  transition: opacity 0.2s ease;
 }
 
 .edit-btn {
@@ -242,7 +209,7 @@ li.list-item {
   opacity: 0.85;
 }
 
-form.data-form {
+form.data-form { /* Dla formularzy dodawania */
   margin-top: 25px;
   margin-bottom: 25px;
   padding: 20px;
@@ -293,9 +260,10 @@ form.data-form button[type="submit"]:hover {
   gap: 10px;
 }
 
-.edit-form-buttons button {
+.edit-form-buttons button { /* Dotyczy przycisków w .edit-form-buttons */
   padding: 10px 15px;
   font-size: 1em;
+  /* Dziedziczą ogólne style z .auth-button, .nav-button, button[type="submit"] */
 }
 
 .edit-form-buttons .cancel-btn {
@@ -314,7 +282,7 @@ form.data-form button[type="submit"]:hover {
   width: 100%;
   overflow-x: auto;
   padding-bottom: 15px;
-  align-items: flex-start; /* Wyrównuje kolumny od góry */
+  align-items: flex-start;
 }
 
 .kanban-column {
@@ -325,7 +293,6 @@ form.data-form button[type="submit"]:hover {
   border-radius: 6px;
   padding: 15px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.07);
-  /* display: flex; flex-direction: column; */ /* Aby karty wypełniały od góry */
 }
 
 .kanban-column h3 {
@@ -338,7 +305,7 @@ form.data-form button[type="submit"]:hover {
   color: var(--secondary-color);
 }
 .kanban-cards-container {
-    min-height: 50px; /* Minimalna wysokość, aby strefa upuszczania była zawsze dostępna */
+    min-height: 50px;
 }
 
 .kanban-card {
@@ -421,15 +388,15 @@ form.data-form button[type="submit"]:hover {
     flex-direction: row;
     overflow-x: auto;
     padding: 5px 0;
-    justify-content: flex-start; /* Zmienione na flex-start */
+    justify-content: flex-start;
   }
   .nav-button {
     margin: 5px;
     text-align: center;
-    padding: 10px 15px; /* Dopasowanie paddingu */
+    padding: 10px 15px;
   }
   .nav-button.logout {
-    margin-left: auto; /* Logout na prawo w mobilnej nawigacji */
+    margin-left: auto;
     margin-right: 5px;
   }
   #kanban-board {
@@ -442,11 +409,11 @@ form.data-form button[type="submit"]:hover {
     max-width: 100%;
   }
   li.list-item {
-    flex-direction: column; /* Akcje pod treścią na małych ekranach */
+    flex-direction: column;
     align-items: flex-start;
   }
   .list-item-actions {
-    margin-left: 0; /* Usunięcie marginesu, gdy akcje są poniżej */
+    margin-left: 0;
     margin-top: 10px;
   }
 }
