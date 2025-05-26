@@ -33,34 +33,42 @@ async function displayEditTaskForm(taskId, container, currentUser) {
     let html = `
       <div class="edit-form-container">
         <h3>Edytuj Zadanie</h3>
-        <form id="specificEditTaskForm" class="data-form"> <input type="hidden" id="editTaskFormIdField" value="${task.id}"> <div class="form-group">
-            <label for="editTaskFormTitleField">Tytuł zadania:</label> <input type="text" id="editTaskFormTitleField" value="${task.title}" required />
+        <form id="specificEditTaskForm" class="data-form">
+          <input type="hidden" id="editTaskFormIdField" value="${task.id}">
+          <div class="form-group">
+            <label for="editTaskFormTitleField">Tytuł zadania:</label>
+            <input type="text" id="editTaskFormTitleField" value="${task.title}" required />
           </div>
           <div class="form-group">
-            <label for="editTaskFormDueDateField">Termin wykonania:</label> <input type="date" id="editTaskFormDueDateField" value="${task.due_date || ''}" />
+            <label for="editTaskFormDueDateField">Termin wykonania:</label>
+            <input type="date" id="editTaskFormDueDateField" value="${task.due_date || ''}" />
           </div>
           <div class="form-group">
-            <label for="editTaskFormStatusField">Status:</label> <select id="editTaskFormStatusField">
+            <label for="editTaskFormStatusField">Status:</label>
+            <select id="editTaskFormStatusField">
               <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>Do zrobienia</option>
               <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>W trakcie</option>
               <option value="done" ${task.status === 'done' ? 'selected' : ''}>Zrobione</option>
             </select>
           </div>
           <div class="form-group">
-            <label for="editTaskFormContactField">Powiąż z kontaktem:</label> <select id="editTaskFormContactField">
+            <label for="editTaskFormContactField">Powiąż z kontaktem:</label>
+            <select id="editTaskFormContactField">
               <option value="">Wybierz kontakt...</option>
               ${contactsForSelect.map(c => `<option value="${c.id}" ${task.contact_id === c.id ? 'selected' : ''}>${c.first_name} ${c.last_name}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label for="editTaskFormCompanyField">Powiąż z firmą:</label> <select id="editTaskFormCompanyField">
+            <label for="editTaskFormCompanyField">Powiąż z firmą:</label>
+            <select id="editTaskFormCompanyField">
               <option value="">Wybierz firmę...</option>
               ${companiesForSelect.map(c => `<option value="${c.id}" ${task.company_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
             </select>
           </div>
           <div class="edit-form-buttons">
             <button type="submit">Zapisz Zmiany</button>
-            <button type="button" class="cancel-btn" id="cancelEditTaskBtnAction">Anuluj</button> </div>
+            <button type="button" class="cancel-btn" id="cancelEditTaskBtnAction">Anuluj</button>
+          </div>
         </form>
       </div>
     `;
@@ -161,28 +169,34 @@ export async function renderTasks(container) {
     }
 
     html += `
-      <form id="mainAddTaskForm" class="data-form"> <h3>Dodaj nowe zadanie</h3>
+      <form id="mainAddTaskForm" class="data-form">
+        <h3>Dodaj nowe zadanie</h3>
         <div class="form-group">
-            <label for="addTaskFormTitleField">Tytuł zadania:</label> <input type="text" id="addTaskFormTitleField" placeholder="Tytuł zadania" required />
+            <label for="addTaskFormTitleField">Tytuł zadania:</label>
+            <input type="text" id="addTaskFormTitleField" placeholder="Tytuł zadania" required />
         </div>
         <div class="form-group">
-            <label for="addTaskFormDueDateField">Termin wykonania:</label> <input type="date" id="addTaskFormDueDateField" />
+            <label for="addTaskFormDueDateField">Termin wykonania:</label>
+            <input type="date" id="addTaskFormDueDateField" />
         </div>
         <div class="form-group">
-            <label for="addTaskFormStatusField">Status:</label> <select id="addTaskFormStatusField">
+            <label for="addTaskFormStatusField">Status:</label>
+            <select id="addTaskFormStatusField">
                 <option value="todo">Do zrobienia</option>
                 <option value="in_progress">W trakcie</option>
                 <option value="done">Zrobione</option>
             </select>
         </div>
         <div class="form-group">
-            <label for="addTaskFormContactField">Powiąż z kontaktem:</label> <select id="addTaskFormContactField">
+            <label for="addTaskFormContactField">Powiąż z kontaktem:</label>
+            <select id="addTaskFormContactField">
                 <option value="">Wybierz kontakt...</option>
                 ${contactsForSelect.map(c => `<option value="${c.id}">${c.first_name} ${c.last_name}</option>`).join('')}
             </select>
         </div>
         <div class="form-group">
-            <label for="addTaskFormCompanyField">Powiąż z firmą:</label> <select id="addTaskFormCompanyField">
+            <label for="addTaskFormCompanyField">Powiąż z firmą:</label>
+            <select id="addTaskFormCompanyField">
                 <option value="">Wybierz firmę...</option>
                 ${companiesForSelect.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
             </select>
