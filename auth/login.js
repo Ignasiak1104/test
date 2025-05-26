@@ -1,16 +1,16 @@
 // auth/login.js
 import { supabaseClient as supabase } from './init.js';
-import { showAppUI } from '../app.js'; // showAppUI jest eksportowane z app.js
+import { showAppUI } from '../app.js';
 
-export function handleAuthState(session, authDivFromApp, appContainerFromApp) {
+export function handleAuthState(session, authDivPassed, appContainerPassed) {
   console.log("login.js: handleAuthState wywołane. Sesja:", session);
 
-  const authDiv = authDivFromApp; // Używamy przekazanych referencji
-  const appContainer = appContainerFromApp; // Używamy przekazanych referencji
+  const authDiv = authDivPassed;
+  const appContainer = appContainerPassed;
 
   if (!authDiv || !appContainer) {
-      console.error("login.js (handleAuthState): Krytyczny błąd - authDiv lub appContainer nie zostały przekazane lub są null.");
-      if (document.body) { // Ostateczny fallback, jeśli UI jest kompletnie zepsute
+      console.error("login.js (handleAuthState): Krytyczny błąd - authDiv lub appContainer nie zostały przekazane.");
+      if (document.body) {
           document.body.innerHTML = "<h1>Błąd UI: Brak kontenerów do zarządzania stanem logowania.</h1>";
       }
       return;
@@ -23,66 +23,67 @@ export function handleAuthState(session, authDivFromApp, appContainerFromApp) {
     showAppUI();
   } else {
     console.log("login.js (handleAuthState): Brak sesji. Pokazywanie formularza logowania.");
-    authDiv.style.display = 'flex'; // Używamy flex dla login-container
+    authDiv.style.display = 'flex';
     appContainer.style.display = 'none';
-    showLogin(authDiv); // Przekazujemy authDiv do showLogin
+    showLogin(authDiv);
   }
 }
 
 export function showLogin(authDivPassed) {
   console.log("login.js: showLogin wywołane.");
-  const authDiv = authDivPassed; // Używamy przekazanego elementu
+  const authDiv = authDivPassed;
 
   if (!authDiv) {
-    console.error("login.js (showLogin): Element authDiv nie został przekazany lub jest null!");
+    console.error("login.js (showLogin): Element authDiv nie został przekazany!");
     if (document.body) {
         const errorMsgEl = document.createElement('p');
         errorMsgEl.textContent = "Krytyczny błąd UI: Nie można wyświetlić formularza logowania (brak kontenera #auth).";
         errorMsgEl.style.color = "red";
         errorMsgEl.style.textAlign = "center";
         errorMsgEl.style.padding = "20px";
-        document.body.insertBefore(errorMsgEl, document.body.firstChild); // Dodaj na górze body
+        if (document.body.firstChild) {
+            document.body.insertBefore(errorMsgEl, document.body.firstChild);
+        } else {
+            document.body.appendChild(errorMsgEl);
+        }
     }
     return;
   }
-
-  // Upewniamy się, że główny kontener aplikacji jest ukryty
-  // Możemy go pobrać tutaj ponownie, jeśli app.js nie zarządza jego widocznością w tym momencie
+  
   const appContainer = document.getElementById('app-container');
   if (appContainer) {
     appContainer.style.display = 'none';
   }
-  // Ustawiamy styl wyświetlania dla authDiv, jeśli nie był już ustawiony przez handleAuthState
   if (authDiv.style.display !== 'flex') {
       authDiv.style.display = 'flex';
   }
-
 
   authDiv.innerHTML = `
     <div class="login-container">
       <h2>Login / Rejestracja</h2>
       <div class="form-group">
-        <label for="loginEmail">Email:</label> <input id="loginEmail" type="email" placeholder="Twój email" required />
+        <label for="loginFormEmail">Email:</label>
+        <input id="loginFormEmail" type="email" placeholder="Twój email" required />
       </div>
       <div class="form-group">
-        <label for="loginPassword">Hasło:</label> <input id="loginPassword" type="password" placeholder="Twoje hasło" required />
+        <label for="loginFormPassword">Hasło:</label>
+        <input id="loginFormPassword" type="password" placeholder="Twoje hasło" required />
       </div>
       <div class="button-group">
-        <button id="loginBtn">Zaloguj</button>
-        <button id="registerBtn" class="register">Zarejestruj</button>
-      </div>
-      <p id="auth-message" class="auth-message"></p>
-    </div>
+        <button id="loginBtnElem" class="auth-button">Zaloguj</button> <button id="registerBtnElem" class="auth-button register">Zarejestruj</button> </div>
+      <p id="authMessageArea" class="auth-message"></p> </div>
   `;
 
-  const messageEl = document.getElementById('auth-message');
-  const loginEmailEl = document.getElementById('loginEmail');
-  const loginPasswordEl = document.getElementById('loginPassword');
+  const messageEl = document.getElementById('authMessageArea');
+  const loginEmailEl = document.getElementById('loginFormEmail');
+  const loginPasswordEl = document.getElementById('loginFormPassword');
+  const loginButton = document.getElementById('loginBtnElem');
+  const registerButton = document.getElementById('registerBtnElem');
 
-  const loginBtn = document.getElementById('loginBtn');
-  if (loginBtn) {
-    loginBtn.onclick = async () => {
+  if (loginButton) {
+    loginButton.onclick = async () => {
         if(messageEl) messageEl.textContent = '';
+        if (!loginEmailEl || !loginPasswordEl) return;
         const email = loginEmailEl.value;
         const password = loginPasswordEl.value;
         console.log("login.js: Próba logowania dla:", email);
@@ -97,10 +98,10 @@ export function showLogin(authDivPassed) {
     };
   }
 
-  const registerBtn = document.getElementById('registerBtn');
-  if (registerBtn) {
-    registerBtn.onclick = async () => {
+  if (registerButton) {
+    registerButton.onclick = async () => {
         if(messageEl) messageEl.textContent = '';
+        if (!loginEmailEl || !loginPasswordEl) return;
         const email = loginEmailEl.value;
         const password = loginPasswordEl.value;
         console.log("login.js: Próba rejestracji dla:", email);
