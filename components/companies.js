@@ -29,8 +29,8 @@ async function displayEditCompanyForm(companyId, container, currentUser) {
             <input type="text" id="editCompanyFormIndustryField" value="${company.industry || ''}" />
           </div>
           <div class="edit-form-buttons">
-            <button type="submit">Zapisz Zmiany</button>
-            <button type="button" class="cancel-btn" id="cancelEditCompanyBtnAction">Anuluj</button>
+            <button type="submit" class="btn btn-primary">Zapisz Zmiany</button>
+            <button type="button" class="btn btn-secondary cancel-btn" id="cancelEditCompanyBtnAction">Anuluj</button>
           </div>
         </form>
       </div>
@@ -127,7 +127,7 @@ export async function renderCompanies(container) {
             <label for="addCompanyFormIndustryField">Branża:</label>
             <input type="text" id="addCompanyFormIndustryField" placeholder="Branża" />
         </div>
-        <button type="submit">Dodaj Firmę</button>
+        <button type="submit" class="btn btn-success">Dodaj Firmę</button>
       </form>
     `;
     container.innerHTML = html;
