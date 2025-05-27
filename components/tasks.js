@@ -14,7 +14,7 @@ async function fetchDataForSelect(userId, fromTable, selectFields, errorMsgPrefi
 }
 
 async function displayEditTaskForm(taskId, container, currentUser) {
-  container.innerHTML = `<p class="loading-message">Ładowanie danych zadania...</p>`;
+  container.innerHTML = ''; // Wyczyść kontener
   try {
     const { data: task, error: taskError } = await supabase
       .from('tasks')
@@ -119,7 +119,7 @@ async function displayEditTaskForm(taskId, container, currentUser) {
 }
 
 export async function renderTasks(container) {
-  container.innerHTML = `<p class="loading-message">Ładowanie zadań...</p>`;
+  container.innerHTML = ''; // Wyczyść kontener
   try {
     const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
     if (userError) {
