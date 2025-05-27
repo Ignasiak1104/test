@@ -99,8 +99,9 @@ async function displayEditDealForm(dealId, container, currentUser) {
 
           if (updateError) {
             console.error("Error updating deal:", updateError.message);
-            alert("Błąd podczas aktualizacji szansy: " + updateError.message);
+            showToast("Błąd podczas aktualizacji szansy: " + updateError.message, 'error');
           } else {
+            showToast("Szansa sprzedaży zaktualizowana pomyślnie!");
             renderDeals(container);
           }
         };
@@ -114,6 +115,7 @@ async function displayEditDealForm(dealId, container, currentUser) {
   } catch (err) {
     console.error("Error displaying edit deal form:", err.message);
     container.innerHTML = `<p class="error-message">Błąd ładowania formularza edycji: ${err.message}</p>`;
+    showToast(`Błąd ładowania formularza edycji: ${err.message}`, 'error');
   }
 }
 
@@ -122,17 +124,17 @@ async function updateDealStatusOnDrop(dealId, newStatus, container, currentUser)
     try {
         const { error } = await supabase
             .from('deals')
-            .update({ status: newStatus })
+            .update({ status: newStatus }) // Wciąż używamy 'status', dopóki nie zaimplementujemy w pełni nowych procesów sprzedaży
             .eq('id', dealId)
             .eq('user_id', currentUser.id);
 
         if (error) throw error;
         
-        console.log(`Deal ${dealId} status successfully updated to ${newStatus}`);
+        showToast(`Status szansy zaktualizowany na "${newStatus}"!`);
         renderDeals(container);
     } catch (error) {
         console.error('Error updating deal status on drop:', error.message);
-        alert('Błąd podczas aktualizacji statusu szansy: ' + error.message);
+        showToast('Błąd podczas aktualizacji statusu szansy: ' + error.message, 'error');
         renderDeals(container);
     }
 }
@@ -152,6 +154,7 @@ export async function renderDeals(container) {
       return;
     }
 
+    // Na razie używamy starej struktury statusu, dopóki nie zaimplementujemy w pełni nowych procesów sprzedaży
     const { data: dealsData, error } = await supabase
       .from('deals')
       .select(`*, contacts (id, first_name, last_name), companies (id, name)`)
@@ -167,7 +170,7 @@ export async function renderDeals(container) {
     const contactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'Contacts for add select');
     const companiesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'Companies for add select');
 
-    const dealsByStatus = { open: [], won: [], lost: [] };
+    const dealsByStatus = { open: [], won: [], lost: [] }; // Wciąż używamy starych statusów dla widoku Kanban
     (dealsData || []).forEach(deal => {
       if (dealsByStatus[deal.status]) {
         dealsByStatus[deal.status].push(deal);
@@ -217,8 +220,7 @@ export async function renderDeals(container) {
             <input type="number" id="addDealFormValueField" placeholder="Wartość" step="0.01" />
         </div>
         <div class="form-group">
-            <label for="addDealFormStatusField">Status:</label>
-            <select id="addDealFormStatusField">
+            <label for="addDealFormStatusField">Status:</label> <select id="addDealFormStatusField">
                 <option value="open">Otwarta</option>
                 <option value="won">Wygrana</option>
                 <option value="lost">Przegrana</option>
@@ -262,52 +264,26 @@ export async function renderDeals(container) {
     });
 
     columns.forEach(column => {
-      column.addEventListener('dragover', (event) => {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'move';
-      });
-
-      column.addEventListener('dragenter', (event) => {
-        event.stopPropagation();
-        column.classList.add('over');
-      });
-
-      column.addEventListener('dragleave', (event) => {
-        event.stopPropagation();
-        if (event.currentTarget.contains(event.relatedTarget)) return;
-        column.classList.remove('over');
-      });
-
+      column.addEventListener('dragover', (event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; });
+      column.addEventListener('dragenter', (event) => { event.stopPropagation(); column.classList.add('over'); });
+      column.addEventListener('dragleave', (event) => { event.stopPropagation(); if (event.currentTarget.contains(event.relatedTarget)) return; column.classList.remove('over'); });
       column.addEventListener('drop', async (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        column.classList.remove('over');
-
+        event.preventDefault(); event.stopPropagation(); column.classList.remove('over');
         const dealId = event.dataTransfer.getData('text/plain');
-        const newStatus = column.dataset.status;
-
+        const newStatus = column.dataset.status; // To jest stary status 'open', 'won', 'lost'
         if (dealId && newStatus && ['open', 'won', 'lost'].includes(newStatus)) {
           const draggedCard = container.querySelector(`.kanban-card[data-id="${dealId}"]`);
           if (draggedCard) {
             const originalColumn = draggedCard.closest('.kanban-column');
-            if (originalColumn && originalColumn.dataset.status === newStatus) {
-              console.log("Szansa upuszczona w tej samej kolumnie. Bez aktualizacji.");
-              return;
-            }
+            if (originalColumn && originalColumn.dataset.status === newStatus) { return; }
           }
           await updateDealStatusOnDrop(dealId, newStatus, container, currentUser);
-        } else {
-          console.warn("Nieprawidłowe dealId lub nowy status dla operacji upuszczenia.", {dealId, newStatus});
-        }
+        } else { console.warn("Nieprawidłowe dane dla upuszczenia.", {dealId, newStatus}); }
       });
     });
 
     container.querySelectorAll('.kanban-card .edit-btn').forEach(button => {
-        button.onclick = (e) => {
-            e.stopPropagation(); 
-            const dealId = e.target.dataset.id;
-            displayEditDealForm(dealId, container, currentUser);
-        };
+        button.onclick = (e) => { e.stopPropagation(); const dealId = e.target.dataset.id; displayEditDealForm(dealId, container, currentUser); };
     });
 
     const addDealForm = document.getElementById('mainAddDealForm');
@@ -317,7 +293,7 @@ export async function renderDeals(container) {
         const title = document.getElementById('addDealFormTitleField').value;
         const valueInput = document.getElementById('addDealFormValueField').value;
         const value = valueInput ? parseFloat(valueInput) : null;
-        const status = document.getElementById('addDealFormStatusField').value;
+        const status = document.getElementById('addDealFormStatusField').value; // Stary status
         const contact_id = document.getElementById('addDealFormContactField').value || null;
         const company_id = document.getElementById('addDealFormCompanyField').value || null;
         const { error: insertError } = await supabase.from('deals').insert([
@@ -325,8 +301,9 @@ export async function renderDeals(container) {
         ]);
         if (insertError) {
           console.error("Error adding deal:", insertError.message);
-          alert("Błąd podczas dodawania szansy: " + insertError.message);
+          showToast("Błąd podczas dodawania szansy: " + insertError.message, 'error');
         } else {
+          showToast("Szansa sprzedaży dodana pomyślnie!");
           renderDeals(container);
         }
       };
