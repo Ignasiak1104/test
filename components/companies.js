@@ -55,8 +55,9 @@ async function displayEditCompanyForm(companyId, container, currentUser) {
 
           if (updateError) {
             console.error("Error updating company:", updateError.message);
-            alert("Błąd podczas aktualizacji firmy: " + updateError.message);
+            showToast("Błąd podczas aktualizacji firmy: " + updateError.message, 'error');
           } else {
+            showToast("Firma zaktualizowana pomyślnie!");
             renderCompanies(container);
           }
         };
@@ -70,6 +71,7 @@ async function displayEditCompanyForm(companyId, container, currentUser) {
   } catch (err) {
     console.error("Error displaying edit company form:", err.message);
     container.innerHTML = `<p class="error-message">Błąd ładowania formularza edycji: ${err.message}</p>`;
+    showToast(`Błąd ładowania formularza edycji: ${err.message}`, 'error');
   }
 }
 
@@ -150,8 +152,9 @@ export async function renderCompanies(container) {
         ]);
         if (insertError) {
           console.error("Error adding company:", insertError.message);
-          alert("Błąd podczas dodawania firmy: " + insertError.message);
+          showToast("Błąd podczas dodawania firmy: " + insertError.message, 'error');
         } else {
+          showToast("Firma dodana pomyślnie!");
           renderCompanies(container);
         }
       };
