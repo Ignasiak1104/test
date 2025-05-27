@@ -2,7 +2,7 @@
 import { supabaseClient as supabase } from '../auth/init.js';
 
 async function displayEditContactForm(contactId, container, currentUser) {
-  container.innerHTML = `<p class="loading-message">Ładowanie danych kontaktu...</p>`;
+  container.innerHTML = ''; // Wyczyść kontener zamiast pokazywać "Ładowanie..."
   try {
     const { data: contact, error } = await supabase
       .from('contacts')
@@ -39,7 +39,7 @@ async function displayEditContactForm(contactId, container, currentUser) {
         </form>
       </div>
     `;
-    container.innerHTML = html;
+    container.innerHTML = html; // Renderuj formularz
 
     const editForm = document.getElementById('specificEditContactForm');
     if (editForm) {
@@ -84,7 +84,7 @@ async function displayEditContactForm(contactId, container, currentUser) {
 }
 
 export async function renderContacts(container) {
-  container.innerHTML = `<p class="loading-message">Ładowanie kontaktów...</p>`;
+  container.innerHTML = ''; // Wyczyść kontener zamiast pokazywać "Ładowanie..."
   try {
     const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
     if (userError) {
@@ -144,7 +144,7 @@ export async function renderContacts(container) {
         <button type="submit" class="btn btn-success">Dodaj Kontakt</button>
       </form>
     `;
-    container.innerHTML = html;
+    container.innerHTML = html; // Renderuj zawartość
 
     container.querySelectorAll('.edit-btn').forEach(button => {
       button.onclick = (e) => {
