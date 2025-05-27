@@ -2,7 +2,7 @@
 import { supabaseClient as supabase } from '../auth/init.js';
 
 async function displayEditCompanyForm(companyId, container, currentUser) {
-  container.innerHTML = `<p class="loading-message">Ładowanie danych firmy...</p>`;
+  container.innerHTML = ''; // Wyczyść kontener
   try {
     const { data: company, error } = await supabase
       .from('companies')
@@ -76,7 +76,7 @@ async function displayEditCompanyForm(companyId, container, currentUser) {
 }
 
 export async function renderCompanies(container) {
-  container.innerHTML = `<p class="loading-message">Ładowanie firm...</p>`;
+  container.innerHTML = ''; // Wyczyść kontener
   try {
     const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
     if (userError) {
