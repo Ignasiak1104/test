@@ -1,7 +1,7 @@
 // components/settings_sales_processes.js
 import { supabaseClient as supabase } from '../auth/init.js';
 
-let currentEditingProcess = null;
+let currentEditingProcess = null; 
 
 async function renderStagesForProcess(process, stagesContainer, currentUser) {
     if (!process || !process.id) {
@@ -67,12 +67,10 @@ async function renderStagesForProcess(process, stagesContainer, currentUser) {
 }
 
 async function displayAddStageForm(process, mainContainer, currentUser) {
-    // Znajdź lub stwórz kontener dla formularza dodawania etapu
     let stageFormSection = mainContainer.querySelector('#stageFormSection');
     if (!stageFormSection) {
         stageFormSection = document.createElement('div');
         stageFormSection.id = 'stageFormSection';
-        // Dodaj go po kontenerze etapów, jeśli istnieje, lub na końcu mainContainer
         const stagesContainer = mainContainer.querySelector('#stagesForProcessContainer');
         if (stagesContainer && stagesContainer.nextSibling) {
             mainContainer.insertBefore(stageFormSection, stagesContainer.nextSibling);
@@ -80,10 +78,8 @@ async function displayAddStageForm(process, mainContainer, currentUser) {
             mainContainer.appendChild(stageFormSection);
         }
     }
-    // Ukryj formularz edycji etapu, jeśli jest widoczny
     const stageEditFormSection = mainContainer.querySelector('#stageEditFormSection');
     if (stageEditFormSection) stageEditFormSection.innerHTML = '';
-
 
     const formHtml = `
         <div class="edit-form-container mt-4">
@@ -118,7 +114,9 @@ async function displayAddStageForm(process, mainContainer, currentUser) {
         e.preventDefault();
         const name = document.getElementById('addStageName').value;
         const stage_order_val = document.getElementById('addStageOrder').value;
-        const stage_type = document.getElementById('addStageType').value;
+        const stage_type = document.getElementById('addStageType').value; // Pobieramy wartość z selecta
+
+        console.log('Próba dodania etapu z typem:', stage_type); // DODATKOWE LOGOWANIE
 
         if (stage_order_val === '' || isNaN(parseInt(stage_order_val))) {
             showToast("Kolejność musi być poprawną liczbą.", 'error');
@@ -131,12 +129,12 @@ async function displayAddStageForm(process, mainContainer, currentUser) {
             user_id: currentUser.id,
             name,
             stage_order,
-            stage_type
+            stage_type // Wartość powinna być 'open', 'won', lub 'lost'
         });
 
         if (error) {
-            console.error("Błąd dodawania etapu:", error.message);
-            showToast(`Nie można dodać etapu: ${error.message}`, 'error');
+            console.error("Błąd dodawania etapu (Supabase):", error); // Logujemy cały obiekt błędu
+            showToast(`Nie można dodać etapu: ${error.message} (Kod: ${error.code})`, 'error', 5000); // Dłuższy czas wyświetlania dla błędu
         } else {
             showToast("Etap dodany pomyślnie!");
              if (currentEditingProcess && mainContainer.querySelector('#stagesForProcessContainer')) {
@@ -151,7 +149,6 @@ async function displayAddStageForm(process, mainContainer, currentUser) {
 }
 
 async function displayEditStageForm(stageId, processId, mainContainer, currentUser) {
-    // Ukryj formularz dodawania etapu, jeśli jest widoczny
     const stageFormSection = mainContainer.querySelector('#stageFormSection');
     if (stageFormSection) stageFormSection.innerHTML = '';
 
@@ -160,8 +157,8 @@ async function displayEditStageForm(stageId, processId, mainContainer, currentUs
         stageEditFormSection = document.createElement('div');
         stageEditFormSection.id = 'stageEditFormSection';
         const stagesContainer = mainContainer.querySelector('#stagesForProcessContainer');
-        if (stagesContainer && stagesContainer.nextSibling) { // Wstaw po kontenerze etapów
-            mainContainer.insertBefore(stageEditFormSection, stagesContainer.nextSibling.nextSibling); // Po #stageFormSection
+        if (stagesContainer && stagesContainer.nextSibling) {
+            mainContainer.insertBefore(stageEditFormSection, stagesContainer.nextSibling.nextSibling);
         } else {
              mainContainer.appendChild(stageEditFormSection);
         }
@@ -220,7 +217,9 @@ async function displayEditStageForm(stageId, processId, mainContainer, currentUs
             e.preventDefault();
             const name = document.getElementById('editStageName').value;
             const stage_order_val = document.getElementById('editStageOrder').value;
-            const stage_type = document.getElementById('editStageType').value;
+            const stage_type = document.getElementById('editStageType').value; // Pobieramy wartość
+
+            console.log('Próba aktualizacji etapu z typem:', stage_type); // DODATKOWE LOGOWANIE
 
             if (stage_order_val === '' || isNaN(parseInt(stage_order_val))) {
                 showToast("Kolejność musi być poprawną liczbą.", 'error');
@@ -228,16 +227,15 @@ async function displayEditStageForm(stageId, processId, mainContainer, currentUs
             }
             const stage_order = parseInt(stage_order_val);
 
-
             const { error } = await supabase.from('sales_stages').update({
                 name,
                 stage_order,
-                stage_type
+                stage_type // Wartość powinna być 'open', 'won', lub 'lost'
             }).eq('id', stageId).eq('user_id', currentUser.id);
 
             if (error) {
-                console.error("Błąd aktualizacji etapu:", error.message);
-                showToast(`Nie można zaktualizować etapu: ${error.message}`, 'error');
+                console.error("Błąd aktualizacji etapu (Supabase):", error); // Logujemy cały obiekt błędu
+                showToast(`Nie można zaktualizować etapu: ${error.message} (Kod: ${error.code})`, 'error', 5000);
             } else {
                 showToast("Etap zaktualizowany pomyślnie!");
                 if (currentEditingProcess && mainContainer.querySelector('#stagesForProcessContainer')) {
@@ -294,7 +292,6 @@ async function handleDeleteStage(stageId, processId, mainContainer, currentUser)
 }
 
 async function displayAddProcessForm(container, currentUser) {
-    // Ukryj inne formularze (etapów)
     const stagesContainer = container.querySelector('#stagesForProcessContainer');
     if (stagesContainer) stagesContainer.innerHTML = '';
     const stageFormSection = container.querySelector('#stageFormSection');
@@ -302,12 +299,10 @@ async function displayAddProcessForm(container, currentUser) {
     const stageEditFormSection = container.querySelector('#stageEditFormSection');
     if (stageEditFormSection) stageEditFormSection.innerHTML = '';
 
-
     let processFormSection = container.querySelector('#processFormSection');
     if (!processFormSection) {
         processFormSection = document.createElement('div');
         processFormSection.id = 'processFormSection';
-        // Dodajemy za listą procesów
         const processListContainer = container.querySelector('#processListContainer');
         if (processListContainer && processListContainer.nextSibling) {
             container.insertBefore(processFormSection, processListContainer.nextSibling);
@@ -365,9 +360,8 @@ async function displayAddProcessForm(container, currentUser) {
 }
 
 async function displayEditProcessForm(process, container, currentUser) {
-    // Ukryj inne formularze (etapów)
     const stagesContainer = container.querySelector('#stagesForProcessContainer');
-    if (stagesContainer) stagesContainer.innerHTML = '<p>Edytowanie procesu. Zarządzanie etapami będzie dostępne po zapisaniu zmian lub anulowaniu.</p>';
+    if (stagesContainer) stagesContainer.innerHTML = '<p class="text-gray-600 italic">Edytowanie procesu. Zarządzanie etapami będzie dostępne po zapisaniu zmian lub anulowaniu edycji procesu.</p>';
     const stageFormSection = container.querySelector('#stageFormSection');
     if (stageFormSection) stageFormSection.innerHTML = '';
     const stageEditFormSection = container.querySelector('#stageEditFormSection');
@@ -429,7 +423,6 @@ async function displayEditProcessForm(process, container, currentUser) {
     };
     document.getElementById('cancelEditProcessBtn').onclick = () => {
         processFormSection.innerHTML = '';
-        // Po anulowaniu edycji procesu, jeśli był wybrany, pokaż jego etapy
         if (currentEditingProcess && currentEditingProcess.id && container.querySelector('#stagesForProcessContainer')) {
              renderStagesForProcess(currentEditingProcess, container.querySelector('#stagesForProcessContainer'), currentUser);
         }
@@ -439,7 +432,7 @@ async function displayEditProcessForm(process, container, currentUser) {
 async function handleDeleteProcess(processId, currentUser, container) {
     const { data: deals, error: dealsError } = await supabase
         .from('deals')
-        .select('id', { count: 'exact', head: true }) // Tylko liczba, bez pobierania danych
+        .select('id', { count: 'exact', head: true })
         .eq('sales_process_id', processId)
         .eq('user_id', currentUser.id);
 
@@ -449,7 +442,8 @@ async function handleDeleteProcess(processId, currentUser, container) {
     }
 
     let confirmationMessage = "Czy na pewno chcesz usunąć ten proces sprzedaży? Spowoduje to również usunięcie wszystkich jego etapów.";
-    if (deals && deals.count > 0) { // deals.count zamiast deals.length po zmianie na head:true
+    // Używamy deals.count, ponieważ head:true zwraca tylko liczbę
+    if (deals && deals.count > 0) { 
         confirmationMessage += `\n\nUWAGA: ${deals.count} szans(e) sprzedaży jest aktualnie powiązanych z tym procesem. Po usunięciu procesu, te szanse stracą swoje powiązanie z procesem i etapem (zostaną ustawione na NULL).`;
     }
 
@@ -518,9 +512,8 @@ export async function renderSalesProcessSettings(container) {
     html += `</div>`;
 
     html += `<div id="processFormSection"></div>`;
-    html += `<hr class="my-8 border-t border-gray-300">`; // Wyraźniejsza linia
+    html += `<hr class="my-8 border-t border-gray-300">`;
     html += `<div id="stagesForProcessContainer" class="mt-6">`;
-    // Początkowo puste, lub z instrukcją
     if (!currentEditingProcess && processes && processes.length > 0) {
          html += "<p class='text-gray-600'>Wybierz proces z listy powyżej (kliknij 'Zarządzaj Etapami'), aby zobaczyć i edytować jego etapy.</p>";
     } else if (!processes || processes.length === 0) {
@@ -532,7 +525,10 @@ export async function renderSalesProcessSettings(container) {
 
     container.innerHTML = html;
 
-    document.getElementById('showAddProcessFormBtn').onclick = () => displayAddProcessForm(container, currentUser);
+    document.getElementById('showAddProcessFormBtn').onclick = () => {
+        currentEditingProcess = null; // Czyścimy, gdy dodajemy nowy proces
+        displayAddProcessForm(container, currentUser);
+    }
     
     container.querySelectorAll('.view-stages-btn').forEach(btn => {
         btn.onclick = async () => {
@@ -540,7 +536,6 @@ export async function renderSalesProcessSettings(container) {
             const processToView = processes.find(p => p.id === processId);
             if (processToView) {
                 currentEditingProcess = processToView;
-                // Czyścimy formularze procesów i inne formularze etapów
                 const processFormSection = container.querySelector('#processFormSection');
                 if (processFormSection) processFormSection.innerHTML = '';
                 const stageFormSection = container.querySelector('#stageFormSection');
