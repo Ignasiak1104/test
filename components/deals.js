@@ -1,7 +1,7 @@
 // components/deals.js
 import { supabaseClient as supabase } from '../auth/init.js';
 
-// Funkcja fetchDataForSelect (bez zmian)
+// Funkcja pomocnicza
 async function fetchDataForSelect(userId, fromTable, selectFields, errorMsgPrefix) {
     const { data, error } = await supabase
         .from(fromTable)
@@ -14,7 +14,7 @@ async function fetchDataForSelect(userId, fromTable, selectFields, errorMsgPrefi
     return data || [];
 }
 
-// Funkcja displayEditDealForm (bez zmian logiki, ale z uwzględnieniem przekazania onSaveCallback)
+// Funkcja edycji szansy (zakładamy, że jest kompletna z poprzednich wersji)
 async function displayEditDealForm(dealId, container, currentUser, onSaveCallback) {
   container.innerHTML = `<p class="loading-message">Ładowanie danych szansy do edycji...</p>`;
   try {
@@ -92,12 +92,113 @@ async function displayEditDealForm(dealId, container, currentUser, onSaveCallbac
   } catch (err) { 
       console.error("Error displaying edit deal form:", err.message);
       showToast(`Błąd formularza edycji szansy: ${err.message}`, 'error'); 
-      // W razie błędu, spróbuj wrócić do widoku Kanban, aby uniknąć pustego ekranu
       if (onSaveCallback) onSaveCallback(); else renderDeals(container.closest('#content-area') || container);
     }
 }
 
-// Funkcja do aktualizacji statusu szansy (dla Drag & Drop) (bez zmian)
+
+// ***** UPEWNIJ SIĘ, ŻE TA LINIA ZAWIERA 'export' *****
+export async function displayAddDealForm(formContainer, currentUser, preselectedContactId = null, preselectedCompanyId = null, onSaveCallback) {
+    formContainer.innerHTML = `<p class="loading-message">Ładowanie formularza dodawania szansy...</p>`;
+    try {
+        const {data: salesProcesses, error: spError} = await supabase.from('sales_processes').select('id, name, is_default').eq('user_id', currentUser.id).order('name');
+        if(spError) throw spError;
+
+        const allContacts = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'All Contacts');
+        const allCompanies = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'All Companies');
+
+        let defaultProcessForAdd = (salesProcesses || []).find(p => p.is_default) || ((salesProcesses || []).length > 0 ? salesProcesses[0] : null);
+        let defaultProcessId = defaultProcessForAdd ? defaultProcessForAdd.id : null;
+        
+        let initialStagesOptionsHtml = '<option value="" disabled>Najpierw wybierz proces</option>';
+
+        async function populateStages(processId) {
+            if (!processId) return '<option value="" disabled>Wybierz proces</option>';
+            const { data: stages } = await supabase.from('sales_stages').select('id, name')
+                .eq('process_id', processId).eq('user_id', currentUser.id).eq('stage_type', 'open').order('stage_order');
+            return (stages && stages.length > 0)
+                ? stages.map(s => `<option value="${s.id}">${s.name}</option>`).join('')
+                : '<option value="" disabled>Brak etapów "open"</option>';
+        }
+
+        if (defaultProcessId) {
+            initialStagesOptionsHtml = await populateStages(defaultProcessId);
+        }
+        
+        let html = `
+          <form id="modularAddDealForm" class="data-form">
+            <h3>Dodaj Nową Szansę Sprzedaży</h3>
+            <div class="form-group">
+                <label for="modularAddDealProcessSelect">Proces Sprzedaży:</label>
+                <select id="modularAddDealProcessSelect" required>
+                    <option value="">Wybierz proces...</option>
+                    ${(salesProcesses || []).map(p => `<option value="${p.id}" ${p.id === defaultProcessId ? 'selected' : ''}>${p.name}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="modularAddDealStageSelect">Początkowy Etap ('open'):</label>
+                <select id="modularAddDealStageSelect" required>${initialStagesOptionsHtml}</select>
+            </div>
+            <div class="form-group"> <label for="modularAddDealTitle">Tytuł:</label> <input type="text" id="modularAddDealTitle" required /> </div>
+            <div class="form-group"> <label for="modularAddDealValue">Wartość ($):</label> <input type="number" id="modularAddDealValue" step="0.01" /> </div>
+            <div class="form-group"> <label for="modularAddDealContact">Kontakt:</label> <select id="modularAddDealContact" ${preselectedContactId ? 'disabled' : ''}> <option value="">Wybierz...</option>
+                ${allContacts.map(c => `<option value="${c.id}" ${preselectedContactId === c.id ? 'selected' : ''}>${c.first_name} ${c.last_name}</option>`).join('')} </select> </div>
+            <div class="form-group"> <label for="modularAddDealCompany">Firma:</label> <select id="modularAddDealCompany" ${preselectedCompanyId ? 'disabled' : ''}> <option value="">Wybierz...</option>
+                ${allCompanies.map(c => `<option value="${c.id}" ${preselectedCompanyId === c.id ? 'selected' : ''}>${c.name}</option>`).join('')} </select> </div>
+            <div class="edit-form-buttons">
+                <button type="submit" class="btn btn-success">Dodaj Szansę</button>
+                <button type="button" class="btn btn-secondary" id="cancelModularAddDealBtn">Anuluj</button>
+            </div>
+          </form>
+        `;
+        formContainer.innerHTML = html;
+
+        if (preselectedContactId) document.getElementById('modularAddDealContact').value = preselectedContactId;
+        if (preselectedCompanyId) document.getElementById('modularAddDealCompany').value = preselectedCompanyId;
+
+        const processSelect = document.getElementById('modularAddDealProcessSelect');
+        const stageSelect = document.getElementById('modularAddDealStageSelect');
+        if (processSelect) {
+            processSelect.onchange = async () => {
+                stageSelect.innerHTML = await populateStages(processSelect.value);
+            };
+        }
+
+        document.getElementById('modularAddDealForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const dealData = {
+                title: document.getElementById('modularAddDealTitle').value,
+                value: parseFloat(document.getElementById('modularAddDealValue').value) || null,
+                sales_process_id: processSelect.value,
+                current_stage_id: stageSelect.value,
+                contact_id: preselectedContactId || document.getElementById('modularAddDealContact').value || null,
+                company_id: preselectedCompanyId || document.getElementById('modularAddDealCompany').value || null,
+                user_id: currentUser.id
+            };
+            if (!dealData.sales_process_id || !dealData.current_stage_id) {
+                showToast("Proszę wybrać proces i etap.", "error"); return;
+            }
+            const { error } = await supabase.from('deals').insert(dealData);
+            if (error) showToast("Błąd dodawania szansy: " + error.message, 'error');
+            else {
+                showToast("Szansa dodana!");
+                formContainer.innerHTML = '';
+                if (onSaveCallback) onSaveCallback();
+                else renderDeals(formContainer.closest('#content-area') || formContainer);
+            }
+        };
+        document.getElementById('cancelModularAddDealBtn').onclick = () => {
+            formContainer.innerHTML = '';
+             if (onSaveCallback) onSaveCallback();
+        };
+
+    } catch (error) {
+        console.error("Błąd wyświetlania formularza dodawania szansy:", error.message);
+        formContainer.innerHTML = `<p class="error-message">Błąd ładowania formularza: ${error.message}</p>`;
+    }
+}
+
+
 async function updateDealStageOnDrop(dealId, newStageId, container, currentUser) {
     console.log(`Attempting to update deal ${dealId} to stage ${newStageId}`);
     try {
@@ -118,7 +219,6 @@ async function updateDealStageOnDrop(dealId, newStageId, container, currentUser)
     }
 }
 
-// Zmienna na poziomie modułu do przechowywania ID aktualnie wybranego procesu sprzedaży
 let currentSelectedSalesProcessId = null;
 console.log('deals.js: Inicjalizacja currentSelectedSalesProcessId na poziomie modułu:', currentSelectedSalesProcessId);
 
@@ -146,10 +246,8 @@ export async function renderDeals(container) {
         return;
     }
 
-    console.log("renderDeals: Załadowane procesy sprzedaży:", salesProcesses);
-
     if (!salesProcesses || salesProcesses.length === 0) {
-        currentSelectedSalesProcessId = null; // Zresetuj, jeśli nie ma procesów
+        currentSelectedSalesProcessId = null; 
         container.innerHTML = `<h2>Szanse Sprzedaży (Kanban)</h2>
                              <p class="error-message">Nie zdefiniowano żadnych procesów sprzedaży. 
                              Musisz najpierw skonfigurować przynajmniej jeden proces w ustawieniach.</p>
@@ -166,27 +264,18 @@ export async function renderDeals(container) {
         return;
     }
     
-    // Ustalanie aktywnego/wybranego procesu
     let activeProcess = null;
-    if (currentSelectedSalesProcessId) { // Jeśli mamy już jakiś wybrany ID
+    if (currentSelectedSalesProcessId) { 
         activeProcess = salesProcesses.find(p => p.id === currentSelectedSalesProcessId);
     }
+    if (!activeProcess) activeProcess = salesProcesses.find(p => p.is_default === true);
+    if (!activeProcess) activeProcess = salesProcesses[0];
     
-    if (!activeProcess) { // Jeśli poprzednio wybrany ID nie istnieje lub nie był ustawiony
-        activeProcess = salesProcesses.find(p => p.is_default === true); // Szukaj domyślnego
-    }
-
-    if (!activeProcess) { // Jeśli nadal nie ma (brak domyślnego), weź pierwszy z listy
-        activeProcess = salesProcesses[0];
-    }
-    
-    // Ustaw globalny currentSelectedSalesProcessId tylko jeśli faktycznie znaleziono aktywny proces
     if (activeProcess) {
         currentSelectedSalesProcessId = activeProcess.id;
     } else {
-        // To nie powinno się zdarzyć, jeśli salesProcesses.length > 0, ale na wszelki wypadek
         currentSelectedSalesProcessId = null; 
-        console.error("renderDeals: Nie udało się ustalić aktywnego procesu sprzedaży, mimo że lista procesów nie jest pusta.");
+        console.error("renderDeals: Nie udało się ustalić aktywnego procesu sprzedaży.");
         container.innerHTML = `<p class="error-message">Nie można ustalić aktywnego procesu sprzedaży.</p>`;
         return;
     }
@@ -208,7 +297,6 @@ export async function renderDeals(container) {
             stagesForActiveProcess = stages || [];
         }
     }
-    console.log(`renderDeals: Etapy dla procesu "${activeProcess.name}":`, stagesForActiveProcess);
 
     let dealsData = [];
     if (currentSelectedSalesProcessId) {
@@ -225,7 +313,6 @@ export async function renderDeals(container) {
             dealsData = deals || [];
         }
     }
-    console.log("renderDeals: Szanse sprzedaży dla aktywnego procesu:", dealsData);
 
     let html = `<h2>Szanse Sprzedaży (Kanban)</h2>`;
     html += `<div class="form-group mb-6">
@@ -239,7 +326,7 @@ export async function renderDeals(container) {
     html += '<div id="kanban-board">';
     if (stagesForActiveProcess.length > 0) {
         stagesForActiveProcess.forEach(stage => {
-            const dealsInStage = dealsData.filter(deal => deal.current_stage_id === stage.id);
+            const dealsInStage = (dealsData || []).filter(deal => deal.current_stage_id === stage.id);
             html += `
                 <div class="kanban-column noselect" id="column-stage-${stage.id}" data-stage-id="${stage.id}" data-stage-type="${stage.stage_type}">
                     <h3>${stage.name} (${dealsInStage.length})</h3>
@@ -265,114 +352,31 @@ export async function renderDeals(container) {
         html += `<div class="w-full"><p class="error-message">Wybrany proces sprzedaży ("${activeProcess.name}") nie ma zdefiniowanych etapów. Dodaj etapy w ustawieniach.</p></div>`;
     }
     html += '</div>';
-
-    const contactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'Contacts for add select');
-    const companiesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'Companies for add select');
     
-    let initialStagesForAddFormOptionsHtml = '<option value="" disabled>Najpierw wybierz proces</option>';
-    if (currentSelectedSalesProcessId && stagesForActiveProcess) { // Użyj stagesForActiveProcess, które są już załadowane
-        const openStages = stagesForActiveProcess.filter(s => s.stage_type === 'open');
-        if (openStages.length > 0) {
-            initialStagesForAddFormOptionsHtml = openStages.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-        } else {
-            initialStagesForAddFormOptionsHtml = '<option value="" disabled>Brak etapów "open" dla tego procesu</option>';
-        }
-    }
+    html += `<div id="addDealFormContainerPlaceholder" class="mt-8"></div>`;
+    html += `<button id="showMainAddDealFormBtn" class="btn btn-success mt-4">Dodaj Nową Szansę Sprzedaży</button>`;
     
-    html += `
-      <form id="mainAddDealForm" class="data-form mt-8">
-        <h3>Dodaj Nową Szansę Sprzedaży</h3>
-        <div class="form-group">
-            <label for="addDealProcessSelect">Proces Sprzedaży dla nowej szansy:</label>
-            <select id="addDealProcessSelect" required>
-                ${salesProcesses.map(p => `<option value="${p.id}" ${p.id === currentSelectedSalesProcessId ? 'selected' : ''}>${p.name}</option>`).join('')}
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="addDealStageSelect">Początkowy Etap (tylko etapy 'open'):</label>
-            <select id="addDealStageSelect" required>
-                ${initialStagesForAddFormOptionsHtml}
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="addDealFormTitleField">Tytuł:</label>
-            <input type="text" id="addDealFormTitleField" placeholder="Tytuł szansy" required />
-        </div>
-        <div class="form-group">
-            <label for="addDealFormValueField">Wartość ($):</label>
-            <input type="number" id="addDealFormValueField" placeholder="Wartość" step="0.01" />
-        </div>
-        <div class="form-group">
-            <label for="addDealFormContactField">Powiąż z kontaktem:</label>
-            <select id="addDealFormContactField">
-                <option value="">Wybierz kontakt...</option>
-                ${contactsForSelect.map(c => `<option value="${c.id}">${c.first_name} ${c.last_name}</option>`).join('')}
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="addDealFormCompanyField">Powiąż z firmą:</label>
-            <select id="addDealFormCompanyField">
-                <option value="">Wybierz firmę...</option>
-                ${companiesForSelect.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
-            </select>
-        </div>
-        <button type="submit" class="btn btn-success">Dodaj Szansę</button>
-      </form>
-    `;
     container.innerHTML = html;
 
     const salesProcessSelector = document.getElementById('salesProcessSelector');
     if (salesProcessSelector) {
         salesProcessSelector.onchange = async (e) => {
             currentSelectedSalesProcessId = e.target.value;
-            console.log("renderDeals: Zmieniono proces sprzedaży na (główny selektor):", currentSelectedSalesProcessId);
             await renderDeals(container); 
         };
     }
     
-    const addDealProcessSelectEl = document.getElementById('addDealProcessSelect');
-    const addDealStageSelectEl = document.getElementById('addDealStageSelect');
-
-    async function populateStagesForAddDealForm(processId) {
-        if (!addDealStageSelectEl) return;
-        addDealStageSelectEl.innerHTML = '<option value="">Ładowanie etapów...</option>';
-        console.log("renderDeals: Ładowanie etapów dla procesu w formularzu dodawania:", processId);
-        if (processId) {
-            const { data: stages, error: stagesErr } = await supabase
-                .from('sales_stages')
-                .select('id, name')
-                .eq('process_id', processId)
-                .eq('user_id', currentUser.id) // Ważne: currentUser musi być dostępne w tym zakresie
-                .eq('stage_type', 'open')
-                .order('stage_order', { ascending: true });
-            if (stagesErr) {
-                console.error("Błąd ładowania etapów dla formularza dodawania:", stagesErr);
-                addDealStageSelectEl.innerHTML = '<option value="" disabled>Błąd ładowania etapów</option>';
-            } else {
-                console.log("renderDeals: Załadowane etapy 'open' dla formularza dodawania:", stages);
-                addDealStageSelectEl.innerHTML = stages.length > 0 
-                    ? stages.map(s => `<option value="${s.id}">${s.name}</option>`).join('')
-                    : '<option value="" disabled>Brak etapów "open" dla tego procesu</option>';
-            }
-        } else {
-             addDealStageSelectEl.innerHTML = '<option value="" disabled>Najpierw wybierz proces</option>';
+    const addDealFormContainer = document.getElementById('addDealFormContainerPlaceholder');
+    const showMainAddDealFormBtn = document.getElementById('showMainAddDealFormBtn');
+    if(showMainAddDealFormBtn && addDealFormContainer){
+        showMainAddDealFormBtn.onclick = () => {
+            displayAddDealForm(addDealFormContainer, currentUser, null, null, () => renderDeals(container));
+            showMainAddDealFormBtn.style.display = 'none';
         }
     }
 
-    if (addDealProcessSelectEl) {
-        addDealProcessSelectEl.onchange = async (e) => {
-            await populateStagesForAddDealForm(e.target.value);
-        };
-        // Wywołaj raz, aby załadować etapy dla domyślnie wybranego procesu w formularzu dodawania, jeśli taki jest
-        if (addDealProcessSelectEl.value) {
-            await populateStagesForAddDealForm(addDealProcessSelectEl.value);
-        }
-    }
-
-    // Event Listenery Drag & Drop (bez zmian w logice, ale upewnij się, że są dodawane po renderowaniu HTML)
     const cards = container.querySelectorAll('.kanban-card');
     const columns = container.querySelectorAll('.kanban-column');
-    // ... (cała logika drag & drop listenerów, jak w poprzedniej wersji) ...
     cards.forEach(card => { 
         card.addEventListener('dragstart', (event) => {
             event.dataTransfer.setData('text/plain', card.dataset.dealId);
@@ -404,51 +408,10 @@ export async function renderDeals(container) {
             } else { console.warn("Nieprawidłowe dealId lub newStageId.", {dealId, newStageId}); }
         });
     });
-
-
     container.querySelectorAll('.kanban-card .edit-deal-btn').forEach(button => {
-        button.onclick = (e) => { 
-            e.stopPropagation(); 
-            const dealId = e.target.dataset.dealId; 
-            // Przekazujemy callback, aby po zapisie edycji odświeżyć widok Kanban
-            displayEditDealForm(dealId, container, currentUser, () => renderDeals(container)); 
-        };
+        button.onclick = (e) => { e.stopPropagation(); const dealId = e.target.dataset.dealId; displayEditDealForm(dealId, container, currentUser, () => renderDeals(container)); };
     });
 
-    const addDealFormEl = document.getElementById('mainAddDealForm');
-    if (addDealFormEl) {
-      addDealFormEl.onsubmit = async (e) => {
-        e.preventDefault();
-        const title = document.getElementById('addDealFormTitleField').value;
-        const valueInput = document.getElementById('addDealFormValueField').value;
-        const value = valueInput ? parseFloat(valueInput) : null;
-        
-        const processIdForNewDeal = document.getElementById('addDealProcessSelect').value;
-        const stageIdForNewDeal = document.getElementById('addDealStageSelect').value;
-
-        if (!processIdForNewDeal || !stageIdForNewDeal) {
-            showToast("Proszę wybrać proces sprzedaży i etap początkowy.", "error");
-            return;
-        }
-
-        const contact_id = document.getElementById('addDealFormContactField').value || null;
-        const company_id = document.getElementById('addDealFormCompanyField').value || null;
-        
-        const { error: insertError } = await supabase.from('deals').insert([{ 
-            title, value, user_id: currentUser.id, contact_id, company_id,
-            sales_process_id: processIdForNewDeal,
-            current_stage_id: stageIdForNewDeal
-        }]);
-
-        if (insertError) {
-          console.error("Error adding deal:", insertError.message);
-          showToast("Błąd podczas dodawania szansy: " + insertError.message, 'error');
-        } else {
-          showToast("Szansa sprzedaży dodana pomyślnie!");
-          await renderDeals(container);
-        }
-      };
-    }
   } catch (err) {
     console.error("General error in renderDeals:", err.message);
     container.innerHTML = `<p class="error-message">Wystąpił nieoczekiwany błąd: ${err.message}.</p>`;
