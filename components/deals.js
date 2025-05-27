@@ -14,12 +14,13 @@ async function fetchDataForSelect(userId, fromTable, selectFields, errorMsgPrefi
 }
 
 async function displayEditDealForm(dealId, container, currentUser) {
-  container.innerHTML = ''; // Wyczyść kontener
+  container.innerHTML = ''; 
   try {
-    // Pobierz dane szansy, w tym ID procesu i aktualnego etapu
     const { data: deal, error: dealError } = await supabase
       .from('deals')
-      .select(`*, sales_process_id, current_stage_id, contacts (id), companies (id)`)
+      .select(`*, sales_process_id, current_stage_id, 
+               contacts (id, first_name, last_name), 
+               companies (id, name)`) // Pobieramy dane powiązanych kontaktów i firm
       .eq('id', dealId)
       .eq('user_id', currentUser.id)
       .single();
@@ -28,26 +29,21 @@ async function displayEditDealForm(dealId, container, currentUser) {
       throw dealError || new Error("Nie znaleziono szansy lub brak uprawnień.");
     }
 
-    // Pobierz wszystkie etapy dla procesu sprzedaży tej szansy
     let stagesForCurrentProcess = [];
     if (deal.sales_process_id) {
         const {data: stages, error: stagesFetchError} = await supabase
             .from('sales_stages')
             .select('id, name, stage_type')
             .eq('process_id', deal.sales_process_id)
-            .eq('user_id', currentUser.id) // Dla pewności
+            .eq('user_id', currentUser.id)
             .order('stage_order', {ascending: true});
-        if (stagesFetchError) {
-            console.error("Błąd pobierania etapów dla edycji szansy:", stagesFetchError);
-        } else {
-            stagesForCurrentProcess = stages || [];
-        }
+        if (stagesFetchError) console.error("Błąd pobierania etapów dla edycji szansy:", stagesFetchError);
+        else stagesForCurrentProcess = stages || [];
     }
 
-    const contactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'Contacts for edit select');
-    const companiesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'Companies for edit select');
+    const allContactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'All Contacts for edit deal');
+    const allCompaniesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'All Companies for edit deal');
 
-    // (Na razie nie pozwalamy na zmianę procesu sprzedaży dla istniejącej szansy w tym formularzu)
     const {data: currentProcessInfo, error: pError} = await supabase.from('sales_processes').select('name').eq('id', deal.sales_process_id).single();
     const currentProcessName = pError || !currentProcessInfo ? "Nieznany Proces" : currentProcessInfo.name;
 
@@ -75,14 +71,14 @@ async function displayEditDealForm(dealId, container, currentUser) {
             <label for="editDealFormContactField">Powiąż z kontaktem:</label>
             <select id="editDealFormContactField">
               <option value="">Wybierz kontakt...</option>
-              ${contactsForSelect.map(c => `<option value="${c.id}" ${deal.contact_id === c.id ? 'selected' : ''}>${c.first_name} ${c.last_name}</option>`).join('')}
+              ${allContactsForSelect.map(c => `<option value="${c.id}" ${deal.contact_id === c.id ? 'selected' : ''}>${c.first_name} ${c.last_name}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
             <label for="editDealFormCompanyField">Powiąż z firmą:</label>
             <select id="editDealFormCompanyField">
               <option value="">Wybierz firmę...</option>
-              ${companiesForSelect.map(c => `<option value="${c.id}" ${deal.company_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+              ${allCompaniesForSelect.map(c => `<option value="${c.id}" ${deal.company_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
             </select>
           </div>
           <div class="edit-form-buttons">
@@ -115,10 +111,9 @@ async function displayEditDealForm(dealId, container, currentUser) {
             .update({
               title: updatedTitle,
               value: updatedValue,
-              current_stage_id: updatedStageId, // Aktualizujemy etap
+              current_stage_id: updatedStageId,
               contact_id: updatedContactId,
               company_id: updatedCompanyId
-              // sales_process_id pozostaje bez zmian
             })
             .eq('id', deal.id)
             .eq('user_id', currentUser.id);
@@ -128,7 +123,7 @@ async function displayEditDealForm(dealId, container, currentUser) {
             showToast("Błąd podczas aktualizacji szansy: " + updateError.message, 'error');
           } else {
             showToast("Szansa sprzedaży zaktualizowana pomyślnie!");
-            renderDeals(container); // Odśwież widok Kanban
+            renderDeals(container);
           }
         };
     }
@@ -169,7 +164,7 @@ async function updateDealStageOnDrop(dealId, newStageId, container, currentUser)
 let currentSelectedSalesProcessId = null;
 
 export async function renderDeals(container) {
-  container.innerHTML = ''; // Wyczyść kontener
+  container.innerHTML = ''; 
   try {
     const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
     if (userError || !currentUser) {
@@ -222,7 +217,6 @@ export async function renderDeals(container) {
             .order('stage_order', { ascending: true });
         if (stagesError) {
             console.error("Błąd pobierania etapów dla aktywnego procesu:", stagesError.message);
-            showToast(`Błąd pobierania etapów: ${stagesError.message}`, 'error');
         } else {
             stagesForActiveProcess = stages || [];
         }
@@ -238,7 +232,6 @@ export async function renderDeals(container) {
           .order('created_at', { ascending: false });
         if (dealsFetchError) {
             console.error("Błąd pobierania szans sprzedaży:", dealsFetchError.message);
-            showToast(`Błąd pobierania szans: ${dealsFetchError.message}`, 'error');
         } else {
             dealsData = deals || [];
         }
@@ -268,8 +261,8 @@ export async function renderDeals(container) {
                                 <div class="kanban-card noselect" draggable="true" data-deal-id="${deal.id}">
                                     <h4>${deal.title}</h4>
                                     <p class="value">Wartość: ${deal.value ? '$' + deal.value.toLocaleString() : 'Brak'}</p>
-                                    <p>Kontakt: ${contactName}</p>
-                                    <p>Firma: ${companyName}</p>
+                                    <p><span class="label">Kontakt:</span> ${contactName}</p>
+                                    <p><span class="label">Firma:</span> ${companyName}</p>
                                     <div class="kanban-card-actions">
                                         <button class="edit-deal-btn edit-btn" data-deal-id="${deal.id}">Edytuj</button>
                                     </div>
@@ -283,8 +276,9 @@ export async function renderDeals(container) {
     }
     html += '</div>';
 
-    const contactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'Contacts for add select');
-    const companiesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'Companies for add select');
+    // Formularz dodawania: Pobierz wszystkie kontakty i firmy dla selectów
+    const allContactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'All Contacts for add deal');
+    const allCompaniesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'All Companies for add deal');
     
     let initialStagesForAddFormOptionsHtml = '<option value="" disabled>Najpierw wybierz proces</option>';
     if (currentSelectedSalesProcessId) {
@@ -323,14 +317,14 @@ export async function renderDeals(container) {
             <label for="addDealFormContactField">Powiąż z kontaktem:</label>
             <select id="addDealFormContactField">
                 <option value="">Wybierz kontakt...</option>
-                ${contactsForSelect.map(c => `<option value="${c.id}">${c.first_name} ${c.last_name}</option>`).join('')}
+                ${allContactsForSelect.map(c => `<option value="${c.id}">${c.first_name} ${c.last_name}</option>`).join('')}
             </select>
         </div>
         <div class="form-group">
             <label for="addDealFormCompanyField">Powiąż z firmą:</label>
             <select id="addDealFormCompanyField">
                 <option value="">Wybierz firmę...</option>
-                ${companiesForSelect.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                ${allCompaniesForSelect.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
             </select>
         </div>
         <button type="submit" class="btn btn-success">Dodaj Szansę</button>
@@ -384,36 +378,36 @@ export async function renderDeals(container) {
 
     const cards = container.querySelectorAll('.kanban-card');
     const columns = container.querySelectorAll('.kanban-column');
-    cards.forEach(card => { /* ... (logika drag & drop bez zmian) ... */ 
-      card.addEventListener('dragstart', (event) => {
-        event.dataTransfer.setData('text/plain', card.dataset.dealId);
-        event.dataTransfer.effectAllowed = 'move';
-        card.classList.add('dragging');
-        document.body.classList.add('dragging-active');
-      });
-      card.addEventListener('dragend', () => {
-        card.classList.remove('dragging');
-        document.body.classList.remove('dragging-active');
-        columns.forEach(col => col.classList.remove('over'));
-      });
+    cards.forEach(card => { /* logika drag & drop */ 
+        card.addEventListener('dragstart', (event) => {
+            event.dataTransfer.setData('text/plain', card.dataset.dealId);
+            event.dataTransfer.effectAllowed = 'move';
+            card.classList.add('dragging');
+            document.body.classList.add('dragging-active');
+        });
+        card.addEventListener('dragend', () => {
+            card.classList.remove('dragging');
+            document.body.classList.remove('dragging-active');
+            columns.forEach(col => col.classList.remove('over'));
+        });
     });
-    columns.forEach(column => { /* ... (logika drag & drop bez zmian) ... */ 
-      column.addEventListener('dragover', (event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; });
-      column.addEventListener('dragenter', (event) => { event.stopPropagation(); column.classList.add('over'); });
-      column.addEventListener('dragleave', (event) => { event.stopPropagation(); if (event.currentTarget.contains(event.relatedTarget)) return; column.classList.remove('over'); });
-      column.addEventListener('drop', async (event) => {
-        event.preventDefault(); event.stopPropagation(); column.classList.remove('over');
-        const dealId = event.dataTransfer.getData('text/plain');
-        const newStageId = column.dataset.stageId;
-        if (dealId && newStageId) {
-          const draggedCard = container.querySelector(`.kanban-card[data-deal-id="${dealId}"]`);
-          if (draggedCard) {
-            const originalColumn = draggedCard.closest('.kanban-column');
-            if (originalColumn && originalColumn.dataset.stageId === newStageId) { return; }
-          }
-          await updateDealStageOnDrop(dealId, newStageId, container, currentUser);
-        } else { console.warn("Nieprawidłowe dealId lub newStageId.", {dealId, newStageId}); }
-      });
+    columns.forEach(column => {  /* logika drag & drop */ 
+        column.addEventListener('dragover', (event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; });
+        column.addEventListener('dragenter', (event) => { event.stopPropagation(); column.classList.add('over'); });
+        column.addEventListener('dragleave', (event) => { event.stopPropagation(); if (event.currentTarget.contains(event.relatedTarget)) return; column.classList.remove('over'); });
+        column.addEventListener('drop', async (event) => {
+            event.preventDefault(); event.stopPropagation(); column.classList.remove('over');
+            const dealId = event.dataTransfer.getData('text/plain');
+            const newStageId = column.dataset.stageId;
+            if (dealId && newStageId) {
+              const draggedCard = container.querySelector(`.kanban-card[data-deal-id="${dealId}"]`);
+              if (draggedCard) {
+                const originalColumn = draggedCard.closest('.kanban-column');
+                if (originalColumn && originalColumn.dataset.stageId === newStageId) { return; }
+              }
+              await updateDealStageOnDrop(dealId, newStageId, container, currentUser);
+            } else { console.warn("Nieprawidłowe dealId lub newStageId.", {dealId, newStageId}); }
+        });
     });
 
     container.querySelectorAll('.kanban-card .edit-deal-btn').forEach(button => {
