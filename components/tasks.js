@@ -13,12 +13,14 @@ async function fetchDataForSelect(userId, fromTable, selectFields, errorMsgPrefi
     return data || [];
 }
 
-async function displayEditTaskForm(taskId, container, currentUser) {
+// --- Funkcja do wyświetlania formularza edycji zadania (istniejąca) ---
+async function displayEditTaskForm(taskId, container, currentUser, onSaveCallback) { // Dodano onSaveCallback
   container.innerHTML = ''; 
   try {
+    // ... (reszta kodu displayEditTaskForm bez zmian aż do onsubmit) ...
     const { data: task, error: taskError } = await supabase
       .from('tasks')
-      .select(`*, contact_id, company_id, contacts (id, first_name, last_name), companies (id, name)`)
+      .select(`*, contact_id, company_id, contacts (id), companies (id)`) // Usunięto pełne dane kontaktów/firm, wystarczą ID
       .eq('id', taskId)
       .eq('user_id', currentUser.id)
       .single();
@@ -87,43 +89,122 @@ async function displayEditTaskForm(taskId, container, currentUser) {
           const { error: updateError } = await supabase
             .from('tasks')
             .update({
-              title: updatedTitle,
-              due_date: updatedDueDate,
-              status: updatedStatus,
-              contact_id: updatedContactId,
-              company_id: updatedCompanyId
+              title: updatedTitle, due_date: updatedDueDate, status: updatedStatus,
+              contact_id: updatedContactId, company_id: updatedCompanyId
             })
-            .eq('id', task.id)
-            .eq('user_id', currentUser.id);
+            .eq('id', task.id).eq('user_id', currentUser.id);
 
           if (updateError) {
-            console.error("Error updating task:", updateError.message);
-            showToast("Błąd podczas aktualizacji zadania: " + updateError.message, 'error');
+            showToast("Błąd aktualizacji zadania: " + updateError.message, 'error');
           } else {
             showToast("Zadanie zaktualizowane pomyślnie!");
-            renderTasks(container);
+            if (onSaveCallback) onSaveCallback(); else renderTasks(container.closest('#content-area') || container);
           }
         };
     }
     const cancelBtn = document.getElementById('cancelEditTaskBtnAction');
     if (cancelBtn) {
         cancelBtn.onclick = () => {
-          renderTasks(container);
+            if (onSaveCallback) onSaveCallback(); // Wróć do widoku detali kontaktu, jeśli stamtąd przyszliśmy
+            else renderTasks(container.closest('#content-area') || container);
         };
     }
   } catch (err) {
-    console.error("Error displaying edit task form:", err.message);
-    container.innerHTML = `<p class="error-message">Błąd ładowania formularza edycji: ${err.message}</p>`;
-    showToast(`Błąd ładowania formularza edycji: ${err.message}`, 'error');
+    showToast(`Błąd ładowania formularza edycji zadania: ${err.message}`, 'error');
   }
 }
 
+
+// --- NOWA EKSPORTOWANA Funkcja do wyświetlania formularza DODAWANIA zadania ---
+export async function displayAddTaskForm(formContainer, currentUser, preselectedContactId = null, preselectedCompanyId = null, onSaveCallback) {
+    formContainer.innerHTML = `<p class="loading-message">Ładowanie formularza dodawania zadania...</p>`;
+    try {
+        const contactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'Contacts for add task');
+        const companiesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'Companies for add task');
+
+        let html = `
+          <form id="modularAddTaskForm" class="data-form">
+            <h3>Dodaj nowe zadanie</h3>
+            <div class="form-group">
+                <label for="addTaskFormTitleField">Tytuł zadania:</label>
+                <input type="text" id="addTaskFormTitleField" placeholder="Tytuł zadania" required />
+            </div>
+            <div class="form-group">
+                <label for="addTaskFormDueDateField">Termin wykonania:</label>
+                <input type="date" id="addTaskFormDueDateField" />
+            </div>
+            <div class="form-group">
+                <label for="addTaskFormStatusField">Status:</label>
+                <select id="addTaskFormStatusField">
+                    <option value="todo">Do zrobienia</option>
+                    <option value="in_progress">W trakcie</option>
+                    <option value="done">Zrobione</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="addTaskFormContactField">Powiąż z kontaktem:</label>
+                <select id="addTaskFormContactField" ${preselectedContactId ? 'disabled' : ''}>
+                    <option value="">Wybierz kontakt...</option>
+                    ${contactsForSelect.map(c => `<option value="${c.id}" ${preselectedContactId === c.id ? 'selected' : ''}>${c.first_name} ${c.last_name}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="addTaskFormCompanyField">Powiąż z firmą:</label>
+                <select id="addTaskFormCompanyField" ${preselectedCompanyId ? 'disabled' : ''}>
+                    <option value="">Wybierz firmę...</option>
+                    ${companiesForSelect.map(c => `<option value="${c.id}" ${preselectedCompanyId === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+                </select>
+            </div>
+            <div class="edit-form-buttons">
+                <button type="submit" class="btn btn-success">Dodaj Zadanie</button>
+                <button type="button" class="btn btn-secondary" id="cancelModularAddTaskBtn">Anuluj</button>
+            </div>
+          </form>
+        `;
+        formContainer.innerHTML = html;
+        // Jeśli ID są przekazane, upewnij się, że są wybrane i zablokowane
+        if (preselectedContactId) document.getElementById('addTaskFormContactField').value = preselectedContactId;
+        if (preselectedCompanyId) document.getElementById('addTaskFormCompanyField').value = preselectedCompanyId;
+
+
+        document.getElementById('modularAddTaskForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('addTaskFormTitleField').value;
+            const due_date = document.getElementById('addTaskFormDueDateField').value || null;
+            const status = document.getElementById('addTaskFormStatusField').value;
+            const contact_id = preselectedContactId || document.getElementById('addTaskFormContactField').value || null;
+            const company_id = preselectedCompanyId || document.getElementById('addTaskFormCompanyField').value || null;
+            
+            const { error: insertError } = await supabase.from('tasks').insert([
+              { title, due_date, status, user_id: currentUser.id, contact_id, company_id }
+            ]);
+            if (insertError) {
+              showToast("Błąd podczas dodawania zadania: " + insertError.message, 'error');
+            } else {
+              showToast("Zadanie dodane pomyślnie!");
+              formContainer.innerHTML = ''; // Czyścimy formularz
+              if (onSaveCallback) onSaveCallback(); // Wywołaj callback, jeśli istnieje
+              else renderTasks(formContainer.closest('#content-area') || formContainer); // Domyślnie odśwież listę zadań
+            }
+        };
+        document.getElementById('cancelModularAddTaskBtn').onclick = () => {
+            formContainer.innerHTML = ''; // Ukryj formularz
+            if (onSaveCallback) onSaveCallback(); // Wywołaj callback, jeśli istnieje (np. odświeżenie widoku detali kontaktu)
+        }
+
+    } catch (error) {
+        console.error("Błąd wyświetlania formularza dodawania zadania:", error);
+        formContainer.innerHTML = `<p class="error-message">Błąd ładowania formularza: ${error.message}</p>`;
+    }
+}
+
+
+// --- Główna funkcja renderująca listę zadań (zmodyfikowana) ---
 export async function renderTasks(container) {
   container.innerHTML = ''; 
   try {
     const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
     if (userError || !currentUser) {
-      console.error("renderTasks: Błąd użytkownika lub użytkownik niezalogowany.", userError?.message);
       container.innerHTML = "<p class='error-message'>Proszę się zalogować.</p>";
       return;
     }
@@ -135,13 +216,9 @@ export async function renderTasks(container) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error("Error fetching tasks:", error.message);
       container.innerHTML = `<p class="error-message">Błąd ładowania zadań: ${error.message}</p>`;
       return;
     }
-
-    const allContactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'All Contacts for add task');
-    const allCompaniesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'All Companies for add task');
 
     let html = '<h2>Zadania</h2>';
     if (tasks && tasks.length > 0) {
@@ -164,73 +241,30 @@ export async function renderTasks(container) {
     } else {
       html += '<p>Nie masz jeszcze żadnych zadań.</p>';
     }
-
-    html += `
-      <form id="mainAddTaskForm" class="data-form">
-        <h3>Dodaj nowe zadanie</h3>
-        <div class="form-group">
-            <label for="addTaskFormTitleField">Tytuł zadania:</label>
-            <input type="text" id="addTaskFormTitleField" placeholder="Tytuł zadania" required />
-        </div>
-        <div class="form-group">
-            <label for="addTaskFormDueDateField">Termin wykonania:</label>
-            <input type="date" id="addTaskFormDueDateField" />
-        </div>
-        <div class="form-group">
-            <label for="addTaskFormStatusField">Status:</label>
-            <select id="addTaskFormStatusField">
-                <option value="todo">Do zrobienia</option>
-                <option value="in_progress">W trakcie</option>
-                <option value="done">Zrobione</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="addTaskFormContactField">Powiąż z kontaktem:</label>
-            <select id="addTaskFormContactField">
-                <option value="">Wybierz kontakt...</option>
-                ${allContactsForSelect.map(c => `<option value="${c.id}">${c.first_name} ${c.last_name}</option>`).join('')}
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="addTaskFormCompanyField">Powiąż z firmą:</label>
-            <select id="addTaskFormCompanyField">
-                <option value="">Wybierz firmę...</option>
-                ${allCompaniesForSelect.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
-            </select>
-        </div>
-        <button type="submit" class="btn btn-success">Dodaj Zadanie</button>
-      </form>
-    `;
+    
+    // Kontener dla formularza dodawania, który będzie wypełniany przez displayAddTaskForm
+    html += `<div id="addTaskFormContainerPlaceholder" class="mt-6"></div>`; 
+    html += `<button id="showMainAddTaskFormBtn" class="btn btn-success mt-4">Dodaj Nowe Zadanie</button>`;
+    
     container.innerHTML = html;
 
     container.querySelectorAll('.edit-btn').forEach(button => {
       button.onclick = (e) => {
         const taskId = e.target.dataset.id;
-        displayEditTaskForm(taskId, container, currentUser);
+        // Formularz edycji zajmie cały kontener #content-area lub specjalny sub-kontener
+        displayEditTaskForm(taskId, container, currentUser, () => renderTasks(container));
       };
     });
 
-    const addTaskForm = document.getElementById('mainAddTaskForm');
-    if (addTaskForm) {
-      addTaskForm.onsubmit = async (e) => {
-        e.preventDefault();
-        const title = document.getElementById('addTaskFormTitleField').value;
-        const due_date = document.getElementById('addTaskFormDueDateField').value || null;
-        const status = document.getElementById('addTaskFormStatusField').value;
-        const contact_id = document.getElementById('addTaskFormContactField').value || null;
-        const company_id = document.getElementById('addTaskFormCompanyField').value || null;
-        const { error: insertError } = await supabase.from('tasks').insert([
-          { title, due_date, status, user_id: currentUser.id, contact_id, company_id }
-        ]);
-        if (insertError) {
-          console.error("Error adding task:", insertError.message);
-          showToast("Błąd podczas dodawania zadania: " + insertError.message, 'error');
-        } else {
-          showToast("Zadanie dodane pomyślnie!");
-          renderTasks(container);
+    const addTaskFormContainer = document.getElementById('addTaskFormContainerPlaceholder');
+    const showMainAddTaskFormBtn = document.getElementById('showMainAddTaskFormBtn');
+    if(showMainAddTaskFormBtn && addTaskFormContainer){
+        showMainAddTaskFormBtn.onclick = () => {
+            displayAddTaskForm(addTaskFormContainer, currentUser, null, null, () => renderTasks(container));
+            showMainAddTaskFormBtn.style.display = 'none'; // Ukryj przycisk po pokazaniu formularza
         }
-      };
     }
+
   } catch (err) {
     console.error("General error in renderTasks:", err.message);
     container.innerHTML = `<p class="error-message">Wystąpił nieoczekiwany błąd: ${err.message}.</p>`;
