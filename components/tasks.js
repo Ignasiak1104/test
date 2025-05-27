@@ -98,8 +98,9 @@ async function displayEditTaskForm(taskId, container, currentUser) {
 
           if (updateError) {
             console.error("Error updating task:", updateError.message);
-            alert("Błąd podczas aktualizacji zadania: " + updateError.message);
+            showToast("Błąd podczas aktualizacji zadania: " + updateError.message, 'error');
           } else {
+            showToast("Zadanie zaktualizowane pomyślnie!");
             renderTasks(container);
           }
         };
@@ -113,6 +114,7 @@ async function displayEditTaskForm(taskId, container, currentUser) {
   } catch (err) {
     console.error("Error displaying edit task form:", err.message);
     container.innerHTML = `<p class="error-message">Błąd ładowania formularza edycji: ${err.message}</p>`;
+    showToast(`Błąd ładowania formularza edycji: ${err.message}`, 'error');
   }
 }
 
@@ -227,8 +229,9 @@ export async function renderTasks(container) {
         ]);
         if (insertError) {
           console.error("Error adding task:", insertError.message);
-          alert("Błąd podczas dodawania zadania: " + insertError.message);
+          showToast("Błąd podczas dodawania zadania: " + insertError.message, 'error');
         } else {
+          showToast("Zadanie dodane pomyślnie!");
           renderTasks(container);
         }
       };
