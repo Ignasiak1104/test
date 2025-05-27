@@ -14,11 +14,11 @@ async function fetchDataForSelect(userId, fromTable, selectFields, errorMsgPrefi
 }
 
 async function displayEditTaskForm(taskId, container, currentUser) {
-  container.innerHTML = ''; // Wyczyść kontener
+  container.innerHTML = ''; 
   try {
     const { data: task, error: taskError } = await supabase
       .from('tasks')
-      .select(`*, contacts (id), companies (id)`)
+      .select(`*, contact_id, company_id, contacts (id, first_name, last_name), companies (id, name)`)
       .eq('id', taskId)
       .eq('user_id', currentUser.id)
       .single();
@@ -27,8 +27,8 @@ async function displayEditTaskForm(taskId, container, currentUser) {
       throw taskError || new Error("Nie znaleziono zadania lub brak uprawnień.");
     }
 
-    const contactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'Contacts for edit select');
-    const companiesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'Companies for edit select');
+    const allContactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'All Contacts for edit task');
+    const allCompaniesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'All Companies for edit task');
 
     let html = `
       <div class="edit-form-container">
@@ -55,14 +55,14 @@ async function displayEditTaskForm(taskId, container, currentUser) {
             <label for="editTaskFormContactField">Powiąż z kontaktem:</label>
             <select id="editTaskFormContactField">
               <option value="">Wybierz kontakt...</option>
-              ${contactsForSelect.map(c => `<option value="${c.id}" ${task.contact_id === c.id ? 'selected' : ''}>${c.first_name} ${c.last_name}</option>`).join('')}
+              ${allContactsForSelect.map(c => `<option value="${c.id}" ${task.contact_id === c.id ? 'selected' : ''}>${c.first_name} ${c.last_name}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
             <label for="editTaskFormCompanyField">Powiąż z firmą:</label>
             <select id="editTaskFormCompanyField">
               <option value="">Wybierz firmę...</option>
-              ${companiesForSelect.map(c => `<option value="${c.id}" ${task.company_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+              ${allCompaniesForSelect.map(c => `<option value="${c.id}" ${task.company_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
             </select>
           </div>
           <div class="edit-form-buttons">
@@ -119,16 +119,11 @@ async function displayEditTaskForm(taskId, container, currentUser) {
 }
 
 export async function renderTasks(container) {
-  container.innerHTML = ''; // Wyczyść kontener
+  container.innerHTML = ''; 
   try {
     const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-    if (userError) {
-        console.error("Error fetching user for tasks:", userError.message);
-        container.innerHTML = "<p class='error-message'>Błąd pobierania danych użytkownika.</p>";
-        return;
-    }
-    if (!currentUser) {
-      console.log("renderTasks: User not logged in.");
+    if (userError || !currentUser) {
+      console.error("renderTasks: Błąd użytkownika lub użytkownik niezalogowany.", userError?.message);
       container.innerHTML = "<p class='error-message'>Proszę się zalogować.</p>";
       return;
     }
@@ -145,8 +140,8 @@ export async function renderTasks(container) {
       return;
     }
 
-    const contactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'Contacts for add select');
-    const companiesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'Companies for add select');
+    const allContactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'All Contacts for add task');
+    const allCompaniesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'All Companies for add task');
 
     let html = '<h2>Zadania</h2>';
     if (tasks && tasks.length > 0) {
@@ -158,8 +153,8 @@ export async function renderTasks(container) {
                         <p><span class="label">Tytuł:</span> ${t.title}</p>
                         <p><span class="label">Status:</span> ${t.status}</p>
                         <p><span class="label">Termin:</span> ${t.due_date || 'Brak terminu'}</p>
-                        <p><span class="label">Powiązany kontakt:</span> ${contactName}</p>
-                        <p><span class="label">Powiązana firma:</span> ${companyName}</p>
+                        <p><span class="label">Kontakt:</span> ${contactName}</p>
+                        <p><span class="label">Firma:</span> ${companyName}</p>
                     </div>
                     <div class="list-item-actions">
                         <button class="edit-btn" data-id="${t.id}">Edytuj</button>
@@ -193,14 +188,14 @@ export async function renderTasks(container) {
             <label for="addTaskFormContactField">Powiąż z kontaktem:</label>
             <select id="addTaskFormContactField">
                 <option value="">Wybierz kontakt...</option>
-                ${contactsForSelect.map(c => `<option value="${c.id}">${c.first_name} ${c.last_name}</option>`).join('')}
+                ${allContactsForSelect.map(c => `<option value="${c.id}">${c.first_name} ${c.last_name}</option>`).join('')}
             </select>
         </div>
         <div class="form-group">
             <label for="addTaskFormCompanyField">Powiąż z firmą:</label>
             <select id="addTaskFormCompanyField">
                 <option value="">Wybierz firmę...</option>
-                ${companiesForSelect.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                ${allCompaniesForSelect.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
             </select>
         </div>
         <button type="submit" class="btn btn-success">Dodaj Zadanie</button>
