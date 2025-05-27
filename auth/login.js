@@ -1,5 +1,5 @@
 // auth/login.js
-import { supabaseClient as supabase } from './init.js';
+import { supabaseClient as supabase } from '../auth/init.js';
 import { showAppUI } from '../app.js';
 
 export function handleAuthState(session, authDivPassed, appContainerPassed) {
@@ -22,7 +22,7 @@ export function handleAuthState(session, authDivPassed, appContainerPassed) {
     document.body.classList.remove('auth-active');
     authDiv.classList.remove('fullscreen-auth');
     authDiv.style.display = 'none';
-    authDiv.innerHTML = ''; // Czyścimy zawartość #auth po wylogowaniu
+    authDiv.innerHTML = ''; // Czyścimy #auth, aby nie było widać formularza logowania w tle
 
     if (mainTitle) mainTitle.classList.remove('hidden');
 
@@ -33,9 +33,11 @@ export function handleAuthState(session, authDivPassed, appContainerPassed) {
     document.body.classList.add('auth-active');
     if (mainTitle) mainTitle.classList.add('hidden');
     
+    appContainer.style.display = 'none'; // Ukryj główną aplikację
+    appContainer.innerHTML = ''; // Czyścimy #app-container na wszelki wypadek
+
     authDiv.classList.add('fullscreen-auth');
-    authDiv.style.display = 'flex';
-    appContainer.style.display = 'none';
+    authDiv.style.display = 'flex'; // Pokaż kontener logowania
     showLogin(authDiv);
   }
 }
@@ -108,7 +110,6 @@ export function showLogin(authDiv) {
       registerFormCont.classList.remove('hidden-opacity');
       registerFormCont.classList.add('visible-opacity');
       if (messageArea) messageArea.textContent = '';
-      // Ustawienie focusa na pierwszym polu formularza rejestracji
       if(registerEmailEl) registerEmailEl.focus();
     });
   }
@@ -120,7 +121,6 @@ export function showLogin(authDiv) {
       loginFormCont.classList.remove('hidden-opacity');
       loginFormCont.classList.add('visible-opacity');
       if (messageArea) messageArea.textContent = '';
-      // Ustawienie focusa na pierwszym polu formularza logowania
       if(loginEmailEl) loginEmailEl.focus();
     });
   }
@@ -139,6 +139,7 @@ export function showLogin(authDiv) {
       } catch (error) {
         console.error("login.js: Błąd logowania:", error.message);
         if (messageArea) messageArea.textContent = "Logowanie nie powiodło się: " + error.message;
+        // showToast("Logowanie nie powiodło się: " + error.message, 'error'); // Alternatywnie toast zamiast messageArea
       }
     });
   }
@@ -154,12 +155,13 @@ export function showLogin(authDiv) {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
         if (messageArea) messageArea.textContent = "Sprawdź email ("+email+"), aby potwierdzić rejestrację.";
+        // showToast("Sprawdź email ("+email+"), aby potwierdzić rejestrację.", 'info'); // Alternatywnie
       } catch (error) {
         console.error("login.js: Błąd rejestracji:", error.message);
         if (messageArea) messageArea.textContent = "Rejestracja nie powiodła się: " + error.message;
+        // showToast("Rejestracja nie powiodła się: " + error.message, 'error'); // Alternatywnie
       }
     });
   }
-   // Ustawienie focusa na pierwszym polu formularza logowania po załadowaniu
    if(loginEmailEl) loginEmailEl.focus();
 }
