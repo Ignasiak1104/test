@@ -116,7 +116,7 @@ async function displayAddStageForm(process, mainContainer, currentUser) {
         const stage_order_val = document.getElementById('addStageOrder').value;
         const stage_type = document.getElementById('addStageType').value;
 
-        console.log('Próba dodania etapu z typem:', stage_type);
+        console.log('Próba dodania etapu z typem:', stage_type, 'i kolejnością:', stage_order_val);
 
         if (stage_order_val === '' || isNaN(parseInt(stage_order_val))) {
             showToast("Kolejność musi być poprawną liczbą.", 'error');
@@ -134,7 +134,14 @@ async function displayAddStageForm(process, mainContainer, currentUser) {
 
         if (error) {
             console.error("Błąd dodawania etapu (Supabase):", error);
-            showToast(`Nie można dodać etapu: ${error.message} (Kod: ${error.code})`, 'error', 5000);
+            if (error.code === '23505' && error.message.includes('sales_stages_process_id_stage_order_key')) {
+                showToast("Nie udało się dodać etapu. Podana kolejność jest już zajęta w tym procesie.", 'error', 5000);
+            } else if (error.code === '23505' && error.message.includes('sales_stages_process_id_name_key')) {
+                showToast("Nie udało się dodać etapu. Podana nazwa etapu jest już zajęta w tym procesie.", 'error', 5000);
+            }
+            else {
+                showToast(`Nie można dodać etapu: ${error.message} (Kod: ${error.code})`, 'error', 5000);
+            }
         } else {
             showToast("Etap dodany pomyślnie!");
              if (currentEditingProcess && mainContainer.querySelector('#stagesForProcessContainer')) {
@@ -219,7 +226,7 @@ async function displayEditStageForm(stageId, processId, mainContainer, currentUs
             const stage_order_val = document.getElementById('editStageOrder').value;
             const stage_type = document.getElementById('editStageType').value;
 
-            console.log('Próba aktualizacji etapu z typem:', stage_type);
+            console.log('Próba aktualizacji etapu z typem:', stage_type, 'i kolejnością:', stage_order_val);
 
             if (stage_order_val === '' || isNaN(parseInt(stage_order_val))) {
                 showToast("Kolejność musi być poprawną liczbą.", 'error');
@@ -235,9 +242,18 @@ async function displayEditStageForm(stageId, processId, mainContainer, currentUs
 
             if (error) {
                 console.error("Błąd aktualizacji etapu (Supabase):", error);
-                showToast(`Nie można zaktualizować etapu: ${error.message} (Kod: ${error.code})`, 'error', 5000);
+                if (error.code === '23505' && error.message.includes('sales_stages_process_id_stage_order_key')) {
+                    showToast("Nie udało się zaktualizować etapu. Podana kolejność jest już zajęta w tym procesie.", 'error', 5000);
+                } else if (error.code === '23505' && error.message.includes('sales_stages_process_id_name_key')) {
+                    showToast("Nie udało się zaktualizować etapu. Podana nazwa etapu jest już zajęta w tym procesie.", 'error', 5000);
+                }
+                 else {
+                    showToast(`Nie można zaktualizować etapu: ${error.message} (Kod: ${error.code})`, 'error', 5000);
+                }
             } else {
                 showToast("Etap zaktualizowany pomyślnie!");
+                // Upewnij się, że currentEditingProcess jest aktualnym procesem edytowanego etapu
+                currentEditingProcess = parentProcess; 
                 if (currentEditingProcess && mainContainer.querySelector('#stagesForProcessContainer')) {
                     await renderStagesForProcess(currentEditingProcess, mainContainer.querySelector('#stagesForProcessContainer'), currentUser);
                 }
@@ -275,10 +291,20 @@ async function handleDeleteStage(stageId, processId, mainContainer, currentUser)
         if (error) throw error;
 
         showToast("Etap usunięty pomyślnie.");
-        if (currentEditingProcess && mainContainer.querySelector('#stagesForProcessContainer')) {
+        if (currentEditingProcess && currentEditingProcess.id === processId && mainContainer.querySelector('#stagesForProcessContainer')) {
             await renderStagesForProcess(currentEditingProcess, mainContainer.querySelector('#stagesForProcessContainer'), currentUser);
         } else {
-            renderSalesProcessSettings(mainContainer);
+            // Jeśli usunięto etap z procesu, który nie był "currentEditingProcess" lub currentEditingProcess jest null
+            // to po prostu odświeżamy całe ustawienia, co nie pokaże etapów, dopóki proces nie zostanie wybrany.
+            // Można też próbować znaleźć proces o ID processId i ustawić go jako currentEditingProcess.
+            const { data: deletedStageProcess } = await supabase.from('sales_processes').select('*').eq('id', processId).single();
+            if (deletedStageProcess) currentEditingProcess = deletedStageProcess;
+
+            if (currentEditingProcess && mainContainer.querySelector('#stagesForProcessContainer')) {
+                 await renderStagesForProcess(currentEditingProcess, mainContainer.querySelector('#stagesForProcessContainer'), currentUser);
+            } else {
+                renderSalesProcessSettings(mainContainer); // Fallback, jeśli coś pójdzie nie tak
+            }
         }
         const stageFormSection = mainContainer.querySelector('#stageFormSection');
         if (stageFormSection) stageFormSection.innerHTML = '';
@@ -442,7 +468,7 @@ async function handleDeleteProcess(processId, currentUser, container) {
     }
 
     let confirmationMessage = "Czy na pewno chcesz usunąć ten proces sprzedaży? Spowoduje to również usunięcie wszystkich jego etapów.";
-    if (deals && deals.count > 0) {
+    if (deals && deals.count > 0) { 
         confirmationMessage += `\n\nUWAGA: ${deals.count} szans(e) sprzedaży jest aktualnie powiązanych z tym procesem. Po usunięciu procesu, te szanse stracą swoje powiązanie z procesem i etapem (zostaną ustawione na NULL).`;
     }
 
@@ -570,8 +596,13 @@ export async function renderSalesProcessSettings(container) {
         btn.onclick = () => handleDeleteProcess(btn.dataset.processId, currentUser, container);
     });
 
+    // Jeśli jest aktualnie wybrany/edytowany proces, spróbuj załadować jego etapy
     if (currentEditingProcess && currentEditingProcess.id && container.querySelector('#stagesForProcessContainer')) {
-        await renderStagesForProcess(currentEditingProcess, container.querySelector('#stagesForProcessContainer'), currentUser);
+        // Sprawdź, czy formularz edycji procesu nie jest aktywny
+        const processFormSection = container.querySelector('#processFormSection');
+        if (!processFormSection || processFormSection.innerHTML.trim() === '') { // Jeśli nie ma formularza edycji procesu
+            await renderStagesForProcess(currentEditingProcess, container.querySelector('#stagesForProcessContainer'), currentUser);
+        }
     }
 
   } catch (error) {
