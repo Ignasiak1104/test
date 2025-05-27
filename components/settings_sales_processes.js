@@ -114,9 +114,9 @@ async function displayAddStageForm(process, mainContainer, currentUser) {
         e.preventDefault();
         const name = document.getElementById('addStageName').value;
         const stage_order_val = document.getElementById('addStageOrder').value;
-        const stage_type = document.getElementById('addStageType').value; // Pobieramy wartość z selecta
+        const stage_type = document.getElementById('addStageType').value;
 
-        console.log('Próba dodania etapu z typem:', stage_type); // DODATKOWE LOGOWANIE
+        console.log('Próba dodania etapu z typem:', stage_type);
 
         if (stage_order_val === '' || isNaN(parseInt(stage_order_val))) {
             showToast("Kolejność musi być poprawną liczbą.", 'error');
@@ -129,12 +129,12 @@ async function displayAddStageForm(process, mainContainer, currentUser) {
             user_id: currentUser.id,
             name,
             stage_order,
-            stage_type // Wartość powinna być 'open', 'won', lub 'lost'
+            stage_type
         });
 
         if (error) {
-            console.error("Błąd dodawania etapu (Supabase):", error); // Logujemy cały obiekt błędu
-            showToast(`Nie można dodać etapu: ${error.message} (Kod: ${error.code})`, 'error', 5000); // Dłuższy czas wyświetlania dla błędu
+            console.error("Błąd dodawania etapu (Supabase):", error);
+            showToast(`Nie można dodać etapu: ${error.message} (Kod: ${error.code})`, 'error', 5000);
         } else {
             showToast("Etap dodany pomyślnie!");
              if (currentEditingProcess && mainContainer.querySelector('#stagesForProcessContainer')) {
@@ -217,9 +217,9 @@ async function displayEditStageForm(stageId, processId, mainContainer, currentUs
             e.preventDefault();
             const name = document.getElementById('editStageName').value;
             const stage_order_val = document.getElementById('editStageOrder').value;
-            const stage_type = document.getElementById('editStageType').value; // Pobieramy wartość
+            const stage_type = document.getElementById('editStageType').value;
 
-            console.log('Próba aktualizacji etapu z typem:', stage_type); // DODATKOWE LOGOWANIE
+            console.log('Próba aktualizacji etapu z typem:', stage_type);
 
             if (stage_order_val === '' || isNaN(parseInt(stage_order_val))) {
                 showToast("Kolejność musi być poprawną liczbą.", 'error');
@@ -230,11 +230,11 @@ async function displayEditStageForm(stageId, processId, mainContainer, currentUs
             const { error } = await supabase.from('sales_stages').update({
                 name,
                 stage_order,
-                stage_type // Wartość powinna być 'open', 'won', lub 'lost'
+                stage_type
             }).eq('id', stageId).eq('user_id', currentUser.id);
 
             if (error) {
-                console.error("Błąd aktualizacji etapu (Supabase):", error); // Logujemy cały obiekt błędu
+                console.error("Błąd aktualizacji etapu (Supabase):", error);
                 showToast(`Nie można zaktualizować etapu: ${error.message} (Kod: ${error.code})`, 'error', 5000);
             } else {
                 showToast("Etap zaktualizowany pomyślnie!");
@@ -442,8 +442,7 @@ async function handleDeleteProcess(processId, currentUser, container) {
     }
 
     let confirmationMessage = "Czy na pewno chcesz usunąć ten proces sprzedaży? Spowoduje to również usunięcie wszystkich jego etapów.";
-    // Używamy deals.count, ponieważ head:true zwraca tylko liczbę
-    if (deals && deals.count > 0) { 
+    if (deals && deals.count > 0) {
         confirmationMessage += `\n\nUWAGA: ${deals.count} szans(e) sprzedaży jest aktualnie powiązanych z tym procesem. Po usunięciu procesu, te szanse stracą swoje powiązanie z procesem i etapem (zostaną ustawione na NULL).`;
     }
 
@@ -526,7 +525,7 @@ export async function renderSalesProcessSettings(container) {
     container.innerHTML = html;
 
     document.getElementById('showAddProcessFormBtn').onclick = () => {
-        currentEditingProcess = null; // Czyścimy, gdy dodajemy nowy proces
+        currentEditingProcess = null;
         displayAddProcessForm(container, currentUser);
     }
     
