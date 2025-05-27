@@ -13,21 +13,136 @@ async function fetchDataForSelect(userId, fromTable, selectFields, errorMsgPrefi
     return data || [];
 }
 
-// Funkcja displayEditDealForm - wymaga gruntownej aktualizacji, aby obsługiwać nowe procesy i etapy.
-// Na razie zostawiamy ją zakomentowaną, aby skupić się na działaniu Kanban i dodawaniu.
 async function displayEditDealForm(dealId, container, currentUser) {
-  container.innerHTML = `<p class="loading-message">Ładowanie danych szansy do edycji...</p>`;
-  showToast("Funkcja edycji szansy wymaga aktualizacji do nowego systemu procesów/etapów.", 'info', 4000);
+  container.innerHTML = ''; // Wyczyść kontener
+  try {
+    // Pobierz dane szansy, w tym ID procesu i aktualnego etapu
+    const { data: deal, error: dealError } = await supabase
+      .from('deals')
+      .select(`*, sales_process_id, current_stage_id, contacts (id), companies (id)`)
+      .eq('id', dealId)
+      .eq('user_id', currentUser.id)
+      .single();
 
-  // TODO: Zaimplementować formularz edycji szansy, który:
-  // 1. Pobiera dane szansy, w tym jej sales_process_id i current_stage_id.
-  // 2. Wyświetla dropdown z etapami należącymi do sales_process_id tej szansy, z zaznaczonym current_stage_id.
-  //    (Na razie nie pozwalamy na zmianę samego procesu sprzedaży dla istniejącej szansy, aby uprościć).
-  // 3. Pozwala na edycję pozostałych pól (tytuł, wartość, powiązane kontakty/firmy).
-  // 4. Po zapisie aktualizuje szansę w Supabase i odświeża widok Kanban.
+    if (dealError || !deal) {
+      throw dealError || new Error("Nie znaleziono szansy lub brak uprawnień.");
+    }
 
-  // Tymczasowy powrót do Kanbanu
-  setTimeout(() => renderDeals(container), 500);
+    // Pobierz wszystkie etapy dla procesu sprzedaży tej szansy
+    let stagesForCurrentProcess = [];
+    if (deal.sales_process_id) {
+        const {data: stages, error: stagesFetchError} = await supabase
+            .from('sales_stages')
+            .select('id, name, stage_type')
+            .eq('process_id', deal.sales_process_id)
+            .eq('user_id', currentUser.id) // Dla pewności
+            .order('stage_order', {ascending: true});
+        if (stagesFetchError) {
+            console.error("Błąd pobierania etapów dla edycji szansy:", stagesFetchError);
+        } else {
+            stagesForCurrentProcess = stages || [];
+        }
+    }
+
+    const contactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'Contacts for edit select');
+    const companiesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'Companies for edit select');
+
+    // (Na razie nie pozwalamy na zmianę procesu sprzedaży dla istniejącej szansy w tym formularzu)
+    const {data: currentProcessInfo, error: pError} = await supabase.from('sales_processes').select('name').eq('id', deal.sales_process_id).single();
+    const currentProcessName = pError || !currentProcessInfo ? "Nieznany Proces" : currentProcessInfo.name;
+
+    let html = `
+      <div class="edit-form-container">
+        <h3>Edytuj Szansę Sprzedaży (w procesie: ${currentProcessName})</h3>
+        <form id="specificEditDealForm" class="data-form">
+          <input type="hidden" id="editDealFormIdField" value="${deal.id}">
+          <div class="form-group">
+            <label for="editDealFormTitleField">Tytuł:</label>
+            <input type="text" id="editDealFormTitleField" value="${deal.title}" required />
+          </div>
+          <div class="form-group">
+            <label for="editDealFormValueField">Wartość ($):</label>
+            <input type="number" id="editDealFormValueField" value="${deal.value || ''}" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label for="editDealFormStageField">Aktualny Etap:</label>
+            <select id="editDealFormStageField" required>
+              ${stagesForCurrentProcess.map(s => `<option value="${s.id}" ${deal.current_stage_id === s.id ? 'selected' : ''}>${s.name} (${s.stage_type})</option>`).join('')}
+              ${stagesForCurrentProcess.length === 0 ? '<option value="" disabled>Brak etapów dla tego procesu</option>' : ''}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="editDealFormContactField">Powiąż z kontaktem:</label>
+            <select id="editDealFormContactField">
+              <option value="">Wybierz kontakt...</option>
+              ${contactsForSelect.map(c => `<option value="${c.id}" ${deal.contact_id === c.id ? 'selected' : ''}>${c.first_name} ${c.last_name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="editDealFormCompanyField">Powiąż z firmą:</label>
+            <select id="editDealFormCompanyField">
+              <option value="">Wybierz firmę...</option>
+              ${companiesForSelect.map(c => `<option value="${c.id}" ${deal.company_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="edit-form-buttons">
+            <button type="submit" class="btn btn-primary">Zapisz Zmiany</button>
+            <button type="button" class="btn btn-secondary cancel-btn" id="cancelEditDealBtnAction">Anuluj</button>
+          </div>
+        </form>
+      </div>
+    `;
+    container.innerHTML = html;
+
+    const editForm = document.getElementById('specificEditDealForm');
+    if (editForm) {
+        editForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const updatedTitle = document.getElementById('editDealFormTitleField').value;
+          const updatedValueInput = document.getElementById('editDealFormValueField').value;
+          const updatedValue = updatedValueInput ? parseFloat(updatedValueInput) : null;
+          const updatedStageId = document.getElementById('editDealFormStageField').value;
+          const updatedContactId = document.getElementById('editDealFormContactField').value || null;
+          const updatedCompanyId = document.getElementById('editDealFormCompanyField').value || null;
+
+          if (!updatedStageId) {
+              showToast("Proszę wybrać etap dla szansy sprzedaży.", "error");
+              return;
+          }
+
+          const { error: updateError } = await supabase
+            .from('deals')
+            .update({
+              title: updatedTitle,
+              value: updatedValue,
+              current_stage_id: updatedStageId, // Aktualizujemy etap
+              contact_id: updatedContactId,
+              company_id: updatedCompanyId
+              // sales_process_id pozostaje bez zmian
+            })
+            .eq('id', deal.id)
+            .eq('user_id', currentUser.id);
+
+          if (updateError) {
+            console.error("Error updating deal:", updateError.message);
+            showToast("Błąd podczas aktualizacji szansy: " + updateError.message, 'error');
+          } else {
+            showToast("Szansa sprzedaży zaktualizowana pomyślnie!");
+            renderDeals(container); // Odśwież widok Kanban
+          }
+        };
+    }
+    const cancelBtn = document.getElementById('cancelEditDealBtnAction');
+    if (cancelBtn) {
+        cancelBtn.onclick = () => {
+          renderDeals(container);
+        };
+    }
+  } catch (err) {
+    console.error("Error displaying edit deal form:", err.message);
+    container.innerHTML = `<p class="error-message">Błąd ładowania formularza edycji: ${err.message}</p>`;
+    showToast(`Błąd ładowania formularza edycji: ${err.message}`, 'error');
+  }
 }
 
 
@@ -54,7 +169,7 @@ async function updateDealStageOnDrop(dealId, newStageId, container, currentUser)
 let currentSelectedSalesProcessId = null;
 
 export async function renderDeals(container) {
-  container.innerHTML = `<p class="loading-message">Ładowanie szans sprzedaży...</p>`;
+  container.innerHTML = ''; // Wyczyść kontener
   try {
     const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
     if (userError || !currentUser) {
@@ -74,8 +189,6 @@ export async function renderDeals(container) {
         container.innerHTML = `<p class="error-message">Błąd pobierania procesów sprzedaży: ${processError.message}</p>`;
         return;
     }
-
-    console.log("Załadowane procesy sprzedaży:", salesProcesses);
 
     if (!salesProcesses || salesProcesses.length === 0) {
         container.innerHTML = `<h2>Szanse Sprzedaży (Kanban)</h2>
@@ -99,8 +212,6 @@ export async function renderDeals(container) {
     if (!activeProcess) activeProcess = salesProcesses[0];
     currentSelectedSalesProcessId = activeProcess.id;
 
-    console.log("Aktywny proces sprzedaży ID:", currentSelectedSalesProcessId, "Nazwa:", activeProcess.name);
-
     let stagesForActiveProcess = [];
     if (currentSelectedSalesProcessId) {
         const { data: stages, error: stagesError } = await supabase
@@ -116,7 +227,6 @@ export async function renderDeals(container) {
             stagesForActiveProcess = stages || [];
         }
     }
-    console.log(`Etapy dla procesu "${activeProcess.name}":`, stagesForActiveProcess);
 
     let dealsData = [];
     if (currentSelectedSalesProcessId) {
@@ -133,12 +243,11 @@ export async function renderDeals(container) {
             dealsData = deals || [];
         }
     }
-    console.log("Szanse sprzedaży dla aktywnego procesu:", dealsData);
 
     let html = `<h2>Szanse Sprzedaży (Kanban)</h2>`;
     html += `<div class="form-group mb-6">
                <label for="salesProcessSelector" class="text-base font-semibold text-gray-700 mb-2 block">Aktualny Proces Sprzedaży:</label>
-               <select id="salesProcessSelector" class="mt-1 block w-full md:w-2/3 lg:w-1/2 p-3">`; // Dodano klasę p-3 dla lepszego wyglądu
+               <select id="salesProcessSelector" class="mt-1 block w-full md:w-2/3 lg:w-1/2 p-3">`;
     salesProcesses.forEach(process => {
         html += `<option value="${process.id}" ${process.id === currentSelectedSalesProcessId ? 'selected' : ''}>${process.name}</option>`;
     });
@@ -233,7 +342,6 @@ export async function renderDeals(container) {
     if (salesProcessSelector) {
         salesProcessSelector.onchange = async (e) => {
             currentSelectedSalesProcessId = e.target.value;
-            console.log("Zmieniono proces sprzedaży na (główny selektor):", currentSelectedSalesProcessId);
             await renderDeals(container); 
         };
     }
@@ -244,11 +352,10 @@ export async function renderDeals(container) {
     async function populateStagesForAddDealForm(processId) {
         if (!addDealStageSelectEl) return;
         addDealStageSelectEl.innerHTML = '<option value="">Ładowanie etapów...</option>';
-        console.log("Ładowanie etapów dla procesu w formularzu dodawania:", processId);
         if (processId) {
             const { data: stages, error: stagesErr } = await supabase
                 .from('sales_stages')
-                .select('id, name') // Nie potrzebujemy stage_type, bo filtrujemy po nim w zapytaniu
+                .select('id, name')
                 .eq('process_id', processId)
                 .eq('user_id', currentUser.id)
                 .eq('stage_type', 'open')
@@ -257,7 +364,6 @@ export async function renderDeals(container) {
                 console.error("Błąd ładowania etapów dla formularza dodawania:", stagesErr);
                 addDealStageSelectEl.innerHTML = '<option value="" disabled>Błąd ładowania etapów</option>';
             } else {
-                console.log("Załadowane etapy 'open' dla formularza dodawania:", stages);
                 addDealStageSelectEl.innerHTML = stages.length > 0 
                     ? stages.map(s => `<option value="${s.id}">${s.name}</option>`).join('')
                     : '<option value="" disabled>Brak etapów "open" dla tego procesu</option>';
@@ -271,16 +377,14 @@ export async function renderDeals(container) {
         addDealProcessSelectEl.onchange = async (e) => {
             await populateStagesForAddDealForm(e.target.value);
         };
-        // Wywołaj raz, aby załadować etapy dla domyślnie wybranego procesu w formularzu dodawania
-        if (addDealProcessSelectEl.value) { // addDealProcessSelectEl.value to ID wybranego procesu
+        if (addDealProcessSelectEl.value) {
             await populateStagesForAddDealForm(addDealProcessSelectEl.value);
         }
     }
 
-    // Drag & Drop Listeners
     const cards = container.querySelectorAll('.kanban-card');
     const columns = container.querySelectorAll('.kanban-column');
-    cards.forEach(card => {
+    cards.forEach(card => { /* ... (logika drag & drop bez zmian) ... */ 
       card.addEventListener('dragstart', (event) => {
         event.dataTransfer.setData('text/plain', card.dataset.dealId);
         event.dataTransfer.effectAllowed = 'move';
@@ -293,7 +397,7 @@ export async function renderDeals(container) {
         columns.forEach(col => col.classList.remove('over'));
       });
     });
-    columns.forEach(column => {
+    columns.forEach(column => { /* ... (logika drag & drop bez zmian) ... */ 
       column.addEventListener('dragover', (event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; });
       column.addEventListener('dragenter', (event) => { event.stopPropagation(); column.classList.add('over'); });
       column.addEventListener('dragleave', (event) => { event.stopPropagation(); if (event.currentTarget.contains(event.relatedTarget)) return; column.classList.remove('over'); });
@@ -313,14 +417,10 @@ export async function renderDeals(container) {
     });
 
     container.querySelectorAll('.kanban-card .edit-deal-btn').forEach(button => {
-        button.onclick = (e) => {
-            e.stopPropagation(); 
-            const dealId = e.target.dataset.dealId;
-            displayEditDealForm(dealId, container, currentUser);
-        };
+        button.onclick = (e) => { e.stopPropagation(); const dealId = e.target.dataset.dealId; displayEditDealForm(dealId, container, currentUser); };
     });
 
-    const addDealFormEl = document.getElementById('mainAddDealForm'); // Zmieniono nazwę zmiennej, aby uniknąć konfliktu
+    const addDealFormEl = document.getElementById('mainAddDealForm');
     if (addDealFormEl) {
       addDealFormEl.onsubmit = async (e) => {
         e.preventDefault();
