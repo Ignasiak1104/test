@@ -61,8 +61,9 @@ async function displayEditContactForm(contactId, container, currentUser) {
 
           if (updateError) {
             console.error("Error updating contact:", updateError.message);
-            alert("Błąd podczas aktualizacji kontaktu: " + updateError.message);
+            showToast("Błąd podczas aktualizacji kontaktu: " + updateError.message, 'error');
           } else {
+            showToast("Kontakt zaktualizowany pomyślnie!");
             renderContacts(container);
           }
         };
@@ -78,6 +79,7 @@ async function displayEditContactForm(contactId, container, currentUser) {
   } catch (err) {
     console.error("Error displaying edit contact form:", err.message);
     container.innerHTML = `<p class="error-message">Błąd ładowania formularza edycji: ${err.message}</p>`;
+    showToast(`Błąd ładowania formularza edycji: ${err.message}`, 'error');
   }
 }
 
@@ -165,8 +167,9 @@ export async function renderContacts(container) {
 
         if (insertError) {
           console.error("Error adding contact:", insertError.message);
-          alert("Błąd podczas dodawania kontaktu: " + insertError.message);
+          showToast("Błąd podczas dodawania kontaktu: " + insertError.message, 'error');
         } else {
+          showToast("Kontakt dodany pomyślnie!");
           renderContacts(container);
         }
       };
