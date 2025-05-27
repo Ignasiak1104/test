@@ -1,7 +1,10 @@
 // components/contacts.js
 import { supabaseClient as supabase } from '../auth/init.js';
+// Importujemy funkcje wyświetlania formularzy dodawania z innych modułów
+import { displayAddTaskForm } from './tasks.js';
+import { displayAddDealForm } from './deals.js';
 
-// Funkcja pomocnicza (jeśli jej nie masz, dodaj ją, jeśli jest w innym pliku, upewnij się, że jest dostępna)
+
 async function fetchDataForSelect(userId, fromTable, selectFields, errorMsgPrefix) {
     const { data, error } = await supabase
         .from(fromTable)
@@ -14,46 +17,32 @@ async function fetchDataForSelect(userId, fromTable, selectFields, errorMsgPrefi
     return data || [];
 }
 
-// --- NOWA FUNKCJA: Wyświetlanie Szczegółów Kontaktu ---
-async function renderContactDetails(contactId, container, currentUser) {
+async function renderContactDetails(contact, container, currentUser) { // Zmieniono: przekazujemy cały obiekt contact
     container.innerHTML = `<p class="loading-message">Ładowanie szczegółów kontaktu...</p>`;
     try {
-        // 1. Pobierz główne dane kontaktu (wraz z firmą)
-        const { data: contact, error: contactError } = await supabase
-            .from('contacts')
-            .select('*, companies (id, name)')
-            .eq('id', contactId)
-            .eq('user_id', currentUser.id)
-            .single();
+        // Dane kontaktu są już przekazane, ale możemy chcieć odświeżyć powiązania
+        const contactId = contact.id;
 
-        if (contactError || !contact) {
-            throw contactError || new Error("Nie znaleziono kontaktu lub brak uprawnień.");
-        }
-
-        // 2. Pobierz powiązane zadania
         const { data: linkedTasks, error: tasksError } = await supabase
             .from('tasks')
-            .select('id, title, status, due_date') // Pobieramy tylko potrzebne pola zadań
+            .select('id, title, status, due_date')
             .eq('contact_id', contactId)
             .eq('user_id', currentUser.id)
             .order('created_at', { ascending: false });
 
-        if (tasksError) {
-            console.error("Błąd pobierania powiązanych zadań:", tasksError.message);
-            // Nie przerywamy, jeśli tylko zadania się nie załadują
-        }
+        if (tasksError) console.error("Błąd pobierania powiązanych zadań:", tasksError.message);
 
-        // 3. Pobierz powiązane szanse sprzedaży
         const { data: linkedDeals, error: dealsError } = await supabase
             .from('deals')
-            .select('id, title, value, current_stage_id, sales_stages (name, stage_type)') // Pobieramy nazwę etapu
+            .select('id, title, value, current_stage_id, sales_stages (name, stage_type)')
             .eq('contact_id', contactId)
             .eq('user_id', currentUser.id)
             .order('created_at', { ascending: false });
 
-        if (dealsError) {
-            console.error("Błąd pobierania powiązanych szans:", dealsError.message);
-        }
+        if (dealsError) console.error("Błąd pobierania powiązanych szans:", dealsError.message);
+
+        // Sprawdzamy, czy obiekt firmy istnieje (jeśli kontakt jest powiązany)
+        const companyNameDisplay = contact.companies ? contact.companies.name : 'Brak przypisanej firmy';
 
         let html = `
             <div class="mb-6">
@@ -61,11 +50,11 @@ async function renderContactDetails(contactId, container, currentUser) {
                 <h2 class="text-2xl font-bold text-gray-800">Szczegóły Kontaktu: ${contact.first_name} ${contact.last_name}</h2>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div class="bg-white shadow-md rounded-lg p-6">
                     <h3 class="text-lg font-semibold border-b pb-2 mb-3 text-gray-700">Dane Główne</h3>
                     <p><span class="label">Email:</span> ${contact.email}</p>
-                    <p><span class="label">Firma:</span> ${contact.companies ? contact.companies.name : 'Brak przypisanej firmy'}</p>
+                    <p><span class="label">Firma:</span> ${companyNameDisplay}</p>
                     <div class="mt-4">
                         <button class="edit-contact-from-detail-btn edit-btn" data-id="${contact.id}">Edytuj Kontakt</button>
                     </div>
@@ -81,9 +70,10 @@ async function renderContactDetails(contactId, container, currentUser) {
                             </li>`).join('')}</ul>`
                         : '<p class="text-sm text-gray-500">Brak powiązanych zadań.</p>'
                     }
-                    </div>
+                    <button id="addTaskForContactBtn" class="btn btn-success btn-sm mt-4">Dodaj Zadanie dla Tego Kontaktu</button>
+                </div>
 
-                <div class="bg-white shadow-md rounded-lg p-6 md:col-span-2"> {/* Szanse na całą szerokość jeśli trzeba */}
+                <div class="bg-white shadow-md rounded-lg p-6 md:col-span-2">
                     <h3 class="text-lg font-semibold border-b pb-2 mb-3 text-gray-700">Powiązane Szanse Sprzedaży (${(linkedDeals || []).length})</h3>
                     ${(linkedDeals && linkedDeals.length > 0)
                         ? `<ul class="list-none space-y-2">${linkedDeals.map(deal => `
@@ -97,16 +87,35 @@ async function renderContactDetails(contactId, container, currentUser) {
                             </li>`).join('')}</ul>`
                         : '<p class="text-sm text-gray-500">Brak powiązanych szans sprzedaży.</p>'
                     }
-                    </div>
+                    <button id="addDealForContactBtn" class="btn btn-success btn-sm mt-4">Dodaj Szansę dla Tego Kontaktu</button>
+                </div>
             </div>
-        `;
+            <div id="contactActionFormContainer"></div> `;
 
         container.innerHTML = html;
 
         document.getElementById('backToContactsListBtn').onclick = () => renderContacts(container);
+        
         container.querySelector('.edit-contact-from-detail-btn').onclick = (e) => {
-             // Używamy istniejącej funkcji edycji
-            displayEditContactForm(e.target.dataset.id, container, currentUser);
+            displayEditContactForm(e.target.dataset.id, container, currentUser, true /* isFromDetailsView */);
+        };
+
+        const contactActionFormContainer = document.getElementById('contactActionFormContainer');
+
+        document.getElementById('addTaskForContactBtn').onclick = () => {
+            // Wywołujemy funkcję z tasks.js, przekazując ID kontaktu
+            displayAddTaskForm(contactActionFormContainer, currentUser, contact.id, contact.company_id);
+            // Po dodaniu zadania, chcemy odświeżyć widok szczegółów kontaktu
+            // Można to zrobić przez callback lub ponowne wywołanie renderContactDetails
+            // Na razie zakładamy, że displayAddTaskForm po sukcesie samo odświeży listę zadań,
+            // ale my potrzebujemy odświeżyć cały widok kontaktu.
+            // Można to obsłużyć w displayAddTaskForm, dodając opcjonalny callback.
+            // Na razie: po prostu odświeżamy detale kontaktu po zamknięciu formularza dodawania zadania.
+            // Jest to uproszczenie; idealnie displayAddTaskForm miałby callback onSave.
+        };
+        
+        document.getElementById('addDealForContactBtn').onclick = () => {
+            displayAddDealForm(contactActionFormContainer, currentUser, contact.id, contact.company_id);
         };
 
     } catch (err) {
@@ -116,9 +125,7 @@ async function renderContactDetails(contactId, container, currentUser) {
     }
 }
 
-
-// --- Funkcja do wyświetlania formularza edycji kontaktu (istniejąca, bez zmian logiki) ---
-async function displayEditContactForm(contactId, container, currentUser) {
+async function displayEditContactForm(contactId, container, currentUser, isFromDetailsView = false) {
   container.innerHTML = ''; 
   try {
     const { data: contact, error } = await supabase
@@ -136,7 +143,10 @@ async function displayEditContactForm(contactId, container, currentUser) {
 
     let html = `
       <div class="edit-form-container">
-        <button id="backToContactsListFromEditBtn" class="btn btn-sm btn-secondary mb-4">&larr; Anuluj i wróć do listy</button>
+        ${isFromDetailsView 
+            ? `<button id="backToContactDetailsBtn" data-contact-id="${contact.id}" class="btn btn-sm btn-secondary mb-4">&larr; Anuluj i wróć do szczegółów</button>` 
+            : `<button id="backToContactsListFromEditBtn" class="btn btn-sm btn-secondary mb-4">&larr; Anuluj i wróć do listy</button>`
+        }
         <h3>Edytuj Kontakt</h3>
         <form id="specificEditContactForm" class="data-form">
           <input type="hidden" id="editContactFormIdField" value="${contact.id}">
@@ -161,15 +171,17 @@ async function displayEditContactForm(contactId, container, currentUser) {
           </div>
           <div class="edit-form-buttons">
             <button type="submit" class="btn btn-primary">Zapisz Zmiany</button>
-            {/* Usunięto osobny przycisk Anuluj, bo jest 'Wróć do listy' */}
           </div>
         </form>
       </div>
     `;
     container.innerHTML = html;
     
-    document.getElementById('backToContactsListFromEditBtn').onclick = () => renderContacts(container);
-
+    if (isFromDetailsView) {
+        document.getElementById('backToContactDetailsBtn').onclick = () => renderContactDetails(contact, container, currentUser);
+    } else {
+        document.getElementById('backToContactsListFromEditBtn').onclick = () => renderContacts(container);
+    }
 
     const editForm = document.getElementById('specificEditContactForm');
     if (editForm) {
@@ -196,7 +208,13 @@ async function displayEditContactForm(contactId, container, currentUser) {
             showToast("Błąd podczas aktualizacji kontaktu: " + updateError.message, 'error');
           } else {
             showToast("Kontakt zaktualizowany pomyślnie!");
-            renderContacts(container); // Wróć do listy po pomyślnej edycji
+            if (isFromDetailsView) {
+                // Aby odświeżyć dane kontaktu (np. nazwę firmy, jeśli się zmieniła), pobieramy go ponownie
+                const { data: updatedContactData } = await supabase.from('contacts').select('*, companies (id, name)').eq('id', contact.id).single();
+                renderContactDetails(updatedContactData || contact, container, currentUser);
+            } else {
+                renderContacts(container);
+            }
           }
         };
     }
@@ -207,7 +225,6 @@ async function displayEditContactForm(contactId, container, currentUser) {
   }
 }
 
-// --- Główna funkcja renderująca listę kontaktów (zmodyfikowana) ---
 export async function renderContacts(container) {
   container.innerHTML = ''; 
   try {
@@ -240,7 +257,7 @@ export async function renderContacts(container) {
         <li class="list-item">
             <div>
                 <p><span class="label">Imię i Nazwisko:</span> 
-                    <a href="#" class="text-blue-600 hover:underline view-contact-details" data-id="${c.id}">
+                    <a href="#" class="text-blue-600 hover:underline view-contact-details" data-contact-id="${c.id}">
                         ${c.first_name} ${c.last_name}
                     </a>
                 </p>
@@ -283,19 +300,24 @@ export async function renderContacts(container) {
     `;
     container.innerHTML = html;
 
-    // Listener dla kliknięcia w nazwę kontaktu (przejście do szczegółów)
     container.querySelectorAll('.view-contact-details').forEach(link => {
         link.onclick = (e) => {
             e.preventDefault();
-            const contactId = e.target.closest('a').dataset.id; // Upewniamy się, że łapiemy ID z linku
-            renderContactDetails(contactId, container, currentUser);
+            const contactId = e.currentTarget.dataset.contactId; // Użyj currentTarget
+            const contactData = contacts.find(c => c.id === contactId); // Pobierz pełne dane kontaktu z już załadowanej listy
+            if (contactData) {
+                renderContactDetails(contactData, container, currentUser);
+            } else {
+                console.error("Nie znaleziono danych kontaktu dla ID:", contactId);
+                showToast("Nie można wyświetlić szczegółów kontaktu.", "error");
+            }
         };
     });
 
     container.querySelectorAll('.edit-btn').forEach(button => {
       button.onclick = (e) => {
         const contactId = e.target.dataset.id;
-        displayEditContactForm(contactId, container, currentUser);
+        displayEditContactForm(contactId, container, currentUser, false);
       };
     });
 
