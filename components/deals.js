@@ -1,6 +1,7 @@
 // components/deals.js
 import { supabaseClient as supabase } from '../auth/init.js';
 
+// Funkcja fetchDataForSelect pozostaje bez zmian
 async function fetchDataForSelect(userId, fromTable, selectFields, errorMsgPrefix) {
     const { data, error } = await supabase
         .from(fromTable)
@@ -13,204 +14,203 @@ async function fetchDataForSelect(userId, fromTable, selectFields, errorMsgPrefi
     return data || [];
 }
 
+// Funkcja displayEditDealForm - zakomentowana, wymaga aktualizacji do nowej struktury etapów
+/*
 async function displayEditDealForm(dealId, container, currentUser) {
-  container.innerHTML = `<p class="loading-message">Ładowanie danych szansy...</p>`;
-  try {
-    const { data: deal, error: dealError } = await supabase
-      .from('deals')
-      .select(`*, contacts (id), companies (id)`)
-      .eq('id', dealId)
-      .eq('user_id', currentUser.id)
-      .single();
-
-    if (dealError || !deal) {
-      throw dealError || new Error("Nie znaleziono szansy lub brak uprawnień.");
-    }
-
-    const contactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'Contacts for edit select');
-    const companiesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'Companies for edit select');
-
-    let html = `
-      <div class="edit-form-container">
-        <h3>Edytuj Szansę Sprzedaży</h3>
-        <form id="specificEditDealForm" class="data-form">
-          <input type="hidden" id="editDealFormIdField" value="${deal.id}">
-          <div class="form-group">
-            <label for="editDealFormTitleField">Tytuł:</label>
-            <input type="text" id="editDealFormTitleField" value="${deal.title}" required />
-          </div>
-          <div class="form-group">
-            <label for="editDealFormValueField">Wartość ($):</label>
-            <input type="number" id="editDealFormValueField" value="${deal.value || ''}" step="0.01" />
-          </div>
-          <div class="form-group">
-            <label for="editDealFormStatusField">Status:</label>
-            <select id="editDealFormStatusField">
-              <option value="open" ${deal.status === 'open' ? 'selected' : ''}>Otwarta</option>
-              <option value="won" ${deal.status === 'won' ? 'selected' : ''}>Wygrana</option>
-              <option value="lost" ${deal.status === 'lost' ? 'selected' : ''}>Przegrana</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="editDealFormContactField">Powiąż z kontaktem:</label>
-            <select id="editDealFormContactField">
-              <option value="">Wybierz kontakt...</option>
-              ${contactsForSelect.map(c => `<option value="${c.id}" ${deal.contact_id === c.id ? 'selected' : ''}>${c.first_name} ${c.last_name}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="editDealFormCompanyField">Powiąż z firmą:</label>
-            <select id="editDealFormCompanyField">
-              <option value="">Wybierz firmę...</option>
-              ${companiesForSelect.map(c => `<option value="${c.id}" ${deal.company_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
-            </select>
-          </div>
-          <div class="edit-form-buttons">
-            <button type="submit" class="btn btn-primary">Zapisz Zmiany</button>
-            <button type="button" class="btn btn-secondary cancel-btn" id="cancelEditDealBtnAction">Anuluj</button>
-          </div>
-        </form>
-      </div>
-    `;
-    container.innerHTML = html;
-
-    const editForm = document.getElementById('specificEditDealForm');
-    if (editForm) {
-        editForm.onsubmit = async (e) => {
-          e.preventDefault();
-          const updatedTitle = document.getElementById('editDealFormTitleField').value;
-          const updatedValueInput = document.getElementById('editDealFormValueField').value;
-          const updatedValue = updatedValueInput ? parseFloat(updatedValueInput) : null;
-          const updatedStatus = document.getElementById('editDealFormStatusField').value;
-          const updatedContactId = document.getElementById('editDealFormContactField').value || null;
-          const updatedCompanyId = document.getElementById('editDealFormCompanyField').value || null;
-
-          const { error: updateError } = await supabase
-            .from('deals')
-            .update({
-              title: updatedTitle,
-              value: updatedValue,
-              status: updatedStatus,
-              contact_id: updatedContactId,
-              company_id: updatedCompanyId
-            })
-            .eq('id', deal.id)
-            .eq('user_id', currentUser.id);
-
-          if (updateError) {
-            console.error("Error updating deal:", updateError.message);
-            showToast("Błąd podczas aktualizacji szansy: " + updateError.message, 'error');
-          } else {
-            showToast("Szansa sprzedaży zaktualizowana pomyślnie!");
-            renderDeals(container);
-          }
-        };
-    }
-    const cancelBtn = document.getElementById('cancelEditDealBtnAction');
-    if (cancelBtn) {
-        cancelBtn.onclick = () => {
-          renderDeals(container);
-        };
-    }
-  } catch (err) {
-    console.error("Error displaying edit deal form:", err.message);
-    container.innerHTML = `<p class="error-message">Błąd ładowania formularza edycji: ${err.message}</p>`;
-    showToast(`Błąd ładowania formularza edycji: ${err.message}`, 'error');
-  }
+  // ... logika formularza edycji szansy ...
 }
+*/
 
-async function updateDealStatusOnDrop(dealId, newStatus, container, currentUser) {
-    console.log(`Attempting to update deal ${dealId} to status ${newStatus}`);
+async function updateDealStageOnDrop(dealId, newStageId, container, currentUser) {
+    console.log(`Próba aktualizacji etapu dla szansy ${dealId} na nowy etap ${newStageId}`);
     try {
         const { error } = await supabase
             .from('deals')
-            .update({ status: newStatus }) // Wciąż używamy 'status', dopóki nie zaimplementujemy w pełni nowych procesów sprzedaży
+            .update({ current_stage_id: newStageId })
             .eq('id', dealId)
             .eq('user_id', currentUser.id);
 
         if (error) throw error;
         
-        showToast(`Status szansy zaktualizowany na "${newStatus}"!`);
-        renderDeals(container);
+        showToast(`Etap szansy zaktualizowany!`);
+        await renderDeals(container); // Odśwież tablicę Kanban
     } catch (error) {
-        console.error('Error updating deal status on drop:', error.message);
-        showToast('Błąd podczas aktualizacji statusu szansy: ' + error.message, 'error');
-        renderDeals(container);
+        console.error('Błąd aktualizacji etapu szansy po upuszczeniu:', error.message);
+        showToast('Błąd aktualizacji etapu szansy: ' + error.message, 'error');
+        await renderDeals(container);
     }
 }
+
+// Przechowuje ID aktualnie wybranego procesu sprzedaży (na poziomie modułu)
+let currentSelectedSalesProcessId = null;
 
 export async function renderDeals(container) {
   container.innerHTML = `<p class="loading-message">Ładowanie szans sprzedaży...</p>`;
   try {
     const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-    if (userError) {
-        console.error("Error fetching user for deals:", userError.message);
-        container.innerHTML = "<p class='error-message'>Błąd pobierania danych użytkownika.</p>";
-        return;
-    }
-    if (!currentUser) {
-      console.log("renderDeals: User not logged in.");
-      container.innerHTML = "<p class='error-message'>Proszę się zalogować.</p>";
+    if (userError || !currentUser) {
+      console.error("renderDeals: Błąd użytkownika lub użytkownik niezalogowany.", userError?.message);
+      container.innerHTML = "<p class='error-message'>Proszę się zalogować, aby zobaczyć szanse sprzedaży.</p>";
       return;
     }
 
-    // Na razie używamy starej struktury statusu, dopóki nie zaimplementujemy w pełni nowych procesów sprzedaży
-    const { data: dealsData, error } = await supabase
-      .from('deals')
-      .select(`*, contacts (id, first_name, last_name), companies (id, name)`)
-      .eq('user_id', currentUser.id)
-      .order('created_at', { ascending: false });
+    // 1. Pobierz dostępne procesy sprzedaży dla użytkownika
+    const { data: salesProcesses, error: processError } = await supabase
+        .from('sales_processes')
+        .select('id, name, is_default') // Pobieramy tylko potrzebne pola
+        .eq('user_id', currentUser.id)
+        .order('name', { ascending: true }); // Sortuj alfabetycznie dla lepszej prezentacji
 
-    if (error) {
-        console.error("Error fetching deals:", error.message);
-        container.innerHTML = `<p class="error-message">Błąd ładowania szans sprzedaży: ${error.message}</p>`;
+    if (processError) {
+        console.error("Błąd pobierania procesów sprzedaży:", processError.message);
+        container.innerHTML = `<p class="error-message">Błąd pobierania procesów sprzedaży: ${processError.message}</p>`;
         return;
     }
 
-    const contactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'Contacts for add select');
-    const companiesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'Companies for add select');
+    console.log("Załadowane procesy sprzedaży:", salesProcesses);
 
-    const dealsByStatus = { open: [], won: [], lost: [] }; // Wciąż używamy starych statusów dla widoku Kanban
-    (dealsData || []).forEach(deal => {
-      if (dealsByStatus[deal.status]) {
-        dealsByStatus[deal.status].push(deal);
-      } else {
-        console.warn(`Unknown deal status: ${deal.status} for deal ID: ${deal.id}. Assigning to 'open'.`);
-        dealsByStatus.open.push(deal);
-      }
+    if (!salesProcesses || salesProcesses.length === 0) {
+        container.innerHTML = `<h2>Szanse Sprzedaży (Kanban)</h2>
+                             <p class="error-message">Nie zdefiniowano żadnych procesów sprzedaży. 
+                             Musisz najpierw skonfigurować przynajmniej jeden proces w ustawieniach.</p>
+                             <button id="goToProcessSettingsBtn" class="btn btn-primary mt-4">Przejdź do Ustawień Procesów</button>`;
+        
+        const goToSettingsBtn = container.querySelector('#goToProcessSettingsBtn');
+        if(goToSettingsBtn) {
+            goToSettingsBtn.onclick = (e) => {
+                e.preventDefault();
+                const settingsButton = document.getElementById('settingsSalesProcessesBtn');
+                if (settingsButton) {
+                    settingsButton.click();
+                } else {
+                    showToast("Nie można automatycznie przejść do ustawień. Wybierz 'Ustawienia Procesów' z menu.", "info");
+                }
+            };
+        }
+        return;
+    }
+    
+    // Ustalanie, który proces powinien być aktywny
+    // 1. Sprawdź, czy currentSelectedSalesProcessId jest nadal ważny
+    let activeProcess = salesProcesses.find(p => p.id === currentSelectedSalesProcessId);
+    
+    // 2. Jeśli nie jest ważny (lub nie był ustawiony), spróbuj znaleźć domyślny
+    if (!activeProcess) {
+        activeProcess = salesProcesses.find(p => p.is_default === true);
+    }
+    // 3. Jeśli nie ma domyślnego, wybierz pierwszy z listy
+    if (!activeProcess) {
+        activeProcess = salesProcesses[0];
+    }
+    currentSelectedSalesProcessId = activeProcess.id; // Uaktualnij globalnie wybrany ID
+
+    console.log("Aktywny proces sprzedaży ID:", currentSelectedSalesProcessId, "Nazwa:", activeProcess.name);
+
+    // 2. Pobierz etapy dla aktywnego procesu sprzedaży
+    let stagesForSelectedProcess = [];
+    if (currentSelectedSalesProcessId) {
+        const { data: stages, error: stagesError } = await supabase
+            .from('sales_stages')
+            .select('*')
+            .eq('process_id', currentSelectedSalesProcessId)
+            .eq('user_id', currentUser.id) 
+            .order('stage_order', { ascending: true });
+        if (stagesError) {
+            console.error("Błąd pobierania etapów dla procesu:", stagesError.message);
+            showToast(`Błąd pobierania etapów: ${stagesError.message}`, 'error');
+        } else {
+            stagesForSelectedProcess = stages || [];
+        }
+    }
+    console.log(`Etapy dla procesu "${activeProcess.name}":`, stagesForSelectedProcess);
+
+
+    // 3. Pobierz szanse sprzedaży (deals) przypisane do aktywnego procesu
+    let dealsData = [];
+    if (currentSelectedSalesProcessId) {
+        const { data: deals, error: dealsFetchError } = await supabase
+          .from('deals')
+          .select(`*, contacts (id, first_name, last_name), companies (id, name)`)
+          .eq('user_id', currentUser.id)
+          .eq('sales_process_id', currentSelectedSalesProcessId)
+          .order('created_at', { ascending: false });
+        if (dealsFetchError) {
+            console.error("Błąd pobierania szans sprzedaży:", dealsFetchError.message);
+            showToast(`Błąd pobierania szans: ${dealsFetchError.message}`, 'error');
+        } else {
+            dealsData = deals || [];
+        }
+    }
+    console.log("Szanse sprzedaży dla aktywnego procesu:", dealsData);
+
+    // ----- Budowanie HTML -----
+    let html = `<h2>Szanse Sprzedaży (Kanban)</h2>`;
+
+    html += `<div class="form-group mb-6">
+               <label for="salesProcessSelector" class="text-base font-semibold text-gray-700 mb-2 block">Aktualny Proces Sprzedaży:</label>
+               <select id="salesProcessSelector" class="mt-1 block w-full md:w-2/3 lg:w-1/2 p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">`;
+    salesProcesses.forEach(process => {
+        html += `<option value="${process.id}" ${process.id === currentSelectedSalesProcessId ? 'selected' : ''}>${process.name}</option>`;
     });
+    html += `</select></div>`;
 
-    let html = '<h2>Szanse Sprzedaży (Kanban)</h2>';
     html += '<div id="kanban-board">';
-    const statusLabels = { open: 'Otwarte', won: 'Wygrane', lost: 'Przegrane' };
-
-    for (const statusKey in dealsByStatus) {
-      html += `
-        <div class="kanban-column noselect" id="column-${statusKey}" data-status="${statusKey}">
-          <h3>${statusLabels[statusKey] || statusKey.toUpperCase()} (${dealsByStatus[statusKey].length})</h3>
-          <div class="kanban-cards-container">
-            ${dealsByStatus[statusKey].map(deal => {
-              const contactName = deal.contacts ? `${deal.contacts.first_name} ${deal.contacts.last_name}` : 'Brak';
-              const companyName = deal.companies ? deal.companies.name : 'Brak';
-              return `
-                <div class="kanban-card noselect" draggable="true" data-id="${deal.id}">
-                  <h4>${deal.title}</h4>
-                  <p class="value">Wartość: ${deal.value ? '$' + deal.value.toLocaleString() : 'Brak'}</p>
-                  <p>Kontakt: ${contactName}</p>
-                  <p>Firma: ${companyName}</p>
-                  <div class="kanban-card-actions">
-                    <button class="edit-btn" data-id="${deal.id}">Edytuj</button>
-                  </div>
+    if (stagesForSelectedProcess.length > 0) {
+        stagesForSelectedProcess.forEach(stage => {
+            const dealsInStage = dealsData.filter(deal => deal.current_stage_id === stage.id);
+            html += `
+                <div class="kanban-column noselect" id="column-stage-${stage.id}" data-stage-id="${stage.id}" data-stage-type="${stage.stage_type}">
+                    <h3>${stage.name} (${dealsInStage.length})</h3>
+                    <div class="kanban-cards-container">
+                        ${dealsInStage.map(deal => {
+                            const contactName = deal.contacts ? `${deal.contacts.first_name} ${deal.contacts.last_name}` : 'Brak';
+                            const companyName = deal.companies ? deal.companies.name : 'Brak';
+                            return `
+                                <div class="kanban-card noselect" draggable="true" data-deal-id="${deal.id}">
+                                    <h4>${deal.title}</h4>
+                                    <p class="value">Wartość: ${deal.value ? '$' + deal.value.toLocaleString() : 'Brak'}</p>
+                                    <p>Kontakt: ${contactName}</p>
+                                    <p>Firma: ${companyName}</p>
+                                    <div class="kanban-card-actions">
+                                        <button class="edit-deal-btn edit-btn" data-deal-id="${deal.id}">Edytuj</button>
+                                    </div>
+                                </div>`;
+                        }).join('') || '<p style="text-align:center; font-size:0.9em; color:#777;">Brak szans w tym etapie.</p>'}
+                    </div>
                 </div>`;
-            }).join('') || '<p style="text-align:center; font-size:0.9em; color:#777;">Brak szans w tej kolumnie.</p>'}
-          </div>
-        </div>`;
+        });
+    } else if (currentSelectedSalesProcessId) {
+        html += `<div class="w-full"><p class="error-message">Wybrany proces sprzedaży ("${activeProcess.name}") nie ma zdefiniowanych etapów. Dodaj etapy w ustawieniach.</p></div>`;
     }
     html += '</div>';
 
+    // Formularz dodawania nowej szansy
+    const contactsForSelect = await fetchDataForSelect(currentUser.id, 'contacts', 'id, first_name, last_name', 'Contacts for add select');
+    const companiesForSelect = await fetchDataForSelect(currentUser.id, 'companies', 'id, name', 'Companies for add select');
+    
+    let initialStagesOptionsHtml = '<option value="" disabled>Najpierw wybierz proces dla szansy</option>';
+    if (currentSelectedSalesProcessId) { // Używamy już załadowanych etapów dla aktywnego procesu
+        const openStagesForCurrentProcess = stagesForSelectedProcess.filter(s => s.stage_type === 'open');
+        initialStagesOptionsHtml = openStagesForCurrentProcess.length > 0 
+            ? openStagesForCurrentProcess.map(s => `<option value="${s.id}">${s.name}</option>`).join('')
+            : '<option value="" disabled>Brak etapów "open" dla wybranego procesu</option>';
+    }
+
     html += `
-      <form id="mainAddDealForm" class="data-form">
-        <h3>Dodaj nową szansę sprzedaży</h3>
+      <form id="mainAddDealForm" class="data-form mt-8">
+        <h3>Dodaj Nową Szansę Sprzedaży</h3>
+        <div class="form-group">
+            <label for="addDealProcessSelect">Proces Sprzedaży dla nowej szansy:</label>
+            <select id="addDealProcessSelect" required>
+                ${salesProcesses.map(p => `<option value="${p.id}" ${p.id === currentSelectedSalesProcessId ? 'selected' : ''}>${p.name}</option>`).join('')}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="addDealStageSelect">Początkowy Etap:</label>
+            <select id="addDealStageSelect" required>
+                ${initialStagesOptionsHtml}
+            </select>
+        </div>
         <div class="form-group">
             <label for="addDealFormTitleField">Tytuł:</label>
             <input type="text" id="addDealFormTitleField" placeholder="Tytuł szansy" required />
@@ -218,13 +218,6 @@ export async function renderDeals(container) {
         <div class="form-group">
             <label for="addDealFormValueField">Wartość ($):</label>
             <input type="number" id="addDealFormValueField" placeholder="Wartość" step="0.01" />
-        </div>
-        <div class="form-group">
-            <label for="addDealFormStatusField">Status:</label> <select id="addDealFormStatusField">
-                <option value="open">Otwarta</option>
-                <option value="won">Wygrana</option>
-                <option value="lost">Przegrana</option>
-            </select>
         </div>
         <div class="form-group">
             <label for="addDealFormContactField">Powiąż z kontaktem:</label>
@@ -245,17 +238,62 @@ export async function renderDeals(container) {
     `;
     container.innerHTML = html;
 
+    const salesProcessSelector = document.getElementById('salesProcessSelector');
+    if (salesProcessSelector) {
+        salesProcessSelector.onchange = async (e) => {
+            currentSelectedSalesProcessId = e.target.value; // Aktualizuj globalnie wybrany ID
+            console.log("Zmieniono proces sprzedaży na:", currentSelectedSalesProcessId);
+            await renderDeals(container); 
+        };
+    }
+    
+    const addDealProcessSelect = document.getElementById('addDealProcessSelect');
+    const addDealStageSelect = document.getElementById('addDealStageSelect');
+
+    async function populateInitialStagesForAddForm(processId) {
+        if (!addDealStageSelect) return;
+        addDealStageSelect.innerHTML = '<option value="">Ładowanie etapów...</option>';
+        if (processId) {
+            const { data: stages, error: stagesErr } = await supabase
+                .from('sales_stages')
+                .select('id, name, stage_type')
+                .eq('process_id', processId)
+                .eq('user_id', currentUser.id)
+                .eq('stage_type', 'open')
+                .order('stage_order', { ascending: true });
+            if (stagesErr) {
+                console.error("Błąd ładowania etapów dla formularza dodawania:", stagesErr);
+                addDealStageSelect.innerHTML = '<option value="" disabled>Błąd ładowania etapów</option>';
+            } else {
+                addDealStageSelect.innerHTML = stages.length > 0 
+                    ? stages.map(s => `<option value="${s.id}">${s.name}</option>`).join('')
+                    : '<option value="" disabled>Brak etapów "open" dla tego procesu</option>';
+            }
+        } else {
+             addDealStageSelect.innerHTML = '<option value="" disabled>Najpierw wybierz proces</option>';
+        }
+    }
+
+    if (addDealProcessSelect) {
+        addDealProcessSelect.onchange = async (e) => {
+            await populateInitialStagesForAddForm(e.target.value);
+        };
+        // Jeśli currentSelectedSalesProcessId jest już ustawiony, załaduj etapy dla niego
+        if (currentSelectedSalesProcessId) {
+            await populateInitialStagesForAddForm(currentSelectedSalesProcessId);
+        }
+    }
+
     const cards = container.querySelectorAll('.kanban-card');
     const columns = container.querySelectorAll('.kanban-column');
 
     cards.forEach(card => {
       card.addEventListener('dragstart', (event) => {
-        event.dataTransfer.setData('text/plain', card.dataset.id);
+        event.dataTransfer.setData('text/plain', card.dataset.dealId);
         event.dataTransfer.effectAllowed = 'move';
         card.classList.add('dragging');
         document.body.classList.add('dragging-active');
       });
-
       card.addEventListener('dragend', () => {
         card.classList.remove('dragging');
         document.body.classList.remove('dragging-active');
@@ -270,20 +308,25 @@ export async function renderDeals(container) {
       column.addEventListener('drop', async (event) => {
         event.preventDefault(); event.stopPropagation(); column.classList.remove('over');
         const dealId = event.dataTransfer.getData('text/plain');
-        const newStatus = column.dataset.status; // To jest stary status 'open', 'won', 'lost'
-        if (dealId && newStatus && ['open', 'won', 'lost'].includes(newStatus)) {
-          const draggedCard = container.querySelector(`.kanban-card[data-id="${dealId}"]`);
+        const newStageId = column.dataset.stageId;
+        if (dealId && newStageId) {
+          const draggedCard = container.querySelector(`.kanban-card[data-deal-id="${dealId}"]`);
           if (draggedCard) {
             const originalColumn = draggedCard.closest('.kanban-column');
-            if (originalColumn && originalColumn.dataset.status === newStatus) { return; }
+            if (originalColumn && originalColumn.dataset.stageId === newStageId) { return; }
           }
-          await updateDealStatusOnDrop(dealId, newStatus, container, currentUser);
-        } else { console.warn("Nieprawidłowe dane dla upuszczenia.", {dealId, newStatus}); }
+          await updateDealStageOnDrop(dealId, newStageId, container, currentUser);
+        } else { console.warn("Nieprawidłowe dealId lub newStageId.", {dealId, newStageId}); }
       });
     });
 
-    container.querySelectorAll('.kanban-card .edit-btn').forEach(button => {
-        button.onclick = (e) => { e.stopPropagation(); const dealId = e.target.dataset.id; displayEditDealForm(dealId, container, currentUser); };
+    container.querySelectorAll('.kanban-card .edit-deal-btn').forEach(button => {
+        button.onclick = (e) => {
+            e.stopPropagation(); 
+            const dealId = e.target.dataset.dealId;
+            showToast(`Edycja szansy ${dealId} - aktualizacja formularza edycji jest potrzebna.`, 'info', 4000);
+            // displayEditDealForm(dealId, container, currentUser); // Funkcja wymaga aktualizacji
+        };
     });
 
     const addDealForm = document.getElementById('mainAddDealForm');
@@ -293,23 +336,36 @@ export async function renderDeals(container) {
         const title = document.getElementById('addDealFormTitleField').value;
         const valueInput = document.getElementById('addDealFormValueField').value;
         const value = valueInput ? parseFloat(valueInput) : null;
-        const status = document.getElementById('addDealFormStatusField').value; // Stary status
+        
+        const processIdForNewDeal = document.getElementById('addDealProcessSelect').value;
+        const stageIdForNewDeal = document.getElementById('addDealStageSelect').value;
+
+        if (!processIdForNewDeal || !stageIdForNewDeal) {
+            showToast("Proszę wybrać proces sprzedaży i etap początkowy.", "error");
+            return;
+        }
+
         const contact_id = document.getElementById('addDealFormContactField').value || null;
         const company_id = document.getElementById('addDealFormCompanyField').value || null;
-        const { error: insertError } = await supabase.from('deals').insert([
-          { title, value, status, user_id: currentUser.id, contact_id, company_id }
-        ]);
+        
+        const { error: insertError } = await supabase.from('deals').insert([{ 
+            title, value, user_id: currentUser.id, contact_id, company_id,
+            sales_process_id: processIdForNewDeal,
+            current_stage_id: stageIdForNewDeal
+        }]);
+
         if (insertError) {
           console.error("Error adding deal:", insertError.message);
           showToast("Błąd podczas dodawania szansy: " + insertError.message, 'error');
         } else {
           showToast("Szansa sprzedaży dodana pomyślnie!");
-          renderDeals(container);
+          await renderDeals(container);
         }
       };
     }
   } catch (err) {
     console.error("General error in renderDeals:", err.message);
     container.innerHTML = `<p class="error-message">Wystąpił nieoczekiwany błąd: ${err.message}.</p>`;
+    showToast(`Błąd renderowania szans: ${err.message}`, 'error');
   }
 }
